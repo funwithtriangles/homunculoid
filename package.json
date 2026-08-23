@@ -1,0 +1,10 @@
+{
+  "name": "homuncula",
+  "dependencies": {
+    "three": "^0.185.1",
+    "three-stdlib": "^2.36.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.185.1"
+  }
+}
