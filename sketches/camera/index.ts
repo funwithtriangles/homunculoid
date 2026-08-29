@@ -48,7 +48,7 @@ export default class Camera {
 
     this.lookAtPos = new THREE.Vector3();
 
-    this.sketchApi.camera.near = 0.0001;
+    // this.sketchApi.camera.near = 0.0001;
 
     // Hack to position cameras on JBoys head
     setTimeout(() => {
