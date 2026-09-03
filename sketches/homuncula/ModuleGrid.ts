@@ -39,7 +39,7 @@ export default class ModuleGrid {
       rows = 8,
       randomRotation = true,
       flySpeed = 0.05,
-      noiseScale = 0.8,
+      noiseScale = 2,
       seed = 1,
     } = options;
 

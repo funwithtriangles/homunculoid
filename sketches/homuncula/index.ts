@@ -6,12 +6,14 @@ import {
   MeshStandardMaterial,
   FogExp2,
   Color,
+  PointLight,
+  SpotLight,
 } from "three/webgpu";
-import type { Scene } from "three/webgpu";
+import type { Scene, PerspectiveCamera } from "three/webgpu";
 import { GLTFLoader, RGBELoader, DRACOLoader } from "three-stdlib";
 
 import ModuleGrid from "./ModuleGrid";
-import hdrUrl from "./venice_sunset_1k.hdr?url";
+import hdrUrl from "./above.hdr?url";
 import glbUrl from "./homuncula.glb?url";
 import {
   attribute,
@@ -24,6 +26,10 @@ import {
   time,
   vec2,
   vec3,
+  pmremTexture,
+  luminance,
+  mix,
+  uniform,
 } from "three/tsl";
 
 const gltfLoader = new GLTFLoader();
@@ -40,19 +46,40 @@ export default class Homuncula {
   moduleGrid: ModuleGrid | null = null;
   floorMat = new MeshStandardNodeMaterial();
   bgColor = new Color(0, 0, 1);
+  envRampLow = uniform(new Color(0x000000));
+  envRampHigh = uniform(new Color(0xff0000));
+  envIntensity = uniform(1);
+  pLight = new PointLight(0xffffff, 1);
   scene: Scene;
+  camera: PerspectiveCamera;
 
-  constructor({ scene }: { scene: Scene }) {
+  constructor({ scene, camera }: { scene: Scene; camera: PerspectiveCamera }) {
     this.scene = scene;
     scene.background = this.bgColor;
     scene.fog = new FogExp2(scene.background, 0.1);
     scene.fog.color = this.bgColor;
+
+    this.camera = camera;
+
+    this.root.add(this.pLight);
 
     gltfLoader.load(glbUrl, (gltf) => {
       this.model = gltf.scene;
       this.root.add(this.model);
 
       const modules = this.model.getObjectByName("modules");
+
+      const floorObject = this.model.getObjectByName("shoot");
+      if (!floorObject || !(floorObject as Mesh).isMesh) {
+        console.warn("Could not find mesh named 'shoot' in GLB.");
+        return;
+      }
+
+      const floor = floorObject as Mesh;
+
+      // this.floorMat.copy(floor.material as MeshStandardMaterial);
+      // floor.material = this.floorMat;
+
       if (modules) {
         this.moduleGrid = new ModuleGrid(modules as Group, {
           columns: 16,
@@ -62,18 +89,6 @@ export default class Homuncula {
       } else {
         console.warn("Could not find group named 'modules' in GLB.");
       }
-
-      const floorObject = this.model.getObjectByName("floor");
-      if (!floorObject || !(floorObject as Mesh).isMesh) {
-        console.warn("Could not find mesh named 'floor' in GLB.");
-        return;
-      }
-
-      const floor = floorObject as Mesh;
-
-      this.floorMat.copy(floor.material as MeshStandardMaterial);
-      floor.material = this.floorMat;
-      this.floorMat.needsUpdate = true;
     });
 
     const faceCenter = attribute("_facecenter", "vec3" as const);
@@ -84,12 +99,12 @@ export default class Homuncula {
 
     const wave = distance(faceCenter.xy, vec2(0, 0))
       .mul(10)
-      .sub(time.mul(3))
+      // .sub(time.mul(3))
       .sin()
       .remap(-1, 1, 0, 0.05);
 
     const noise = mx_worley_noise_float(
-      vec3(faceCenter.x.mul(5), faceCenter.y.mul(5), time.mul(1)),
+      vec3(faceCenter.x.mul(5), faceCenter.y.mul(5), 0),
     ).mul(1);
 
     this.floorMat.positionNode = positionLocal.add(
@@ -101,7 +116,13 @@ export default class Homuncula {
     rgbeLoader.load(hdrUrl, (texture) => {
       texture.mapping = EquirectangularReflectionMapping;
 
-      scene.environment = texture;
+      const env = pmremTexture(texture);
+
+      scene.environmentNode = mix(
+        this.envRampLow,
+        this.envRampHigh,
+        luminance(env.rgb).clamp(),
+      ).mul(this.envIntensity);
     });
   }
 
@@ -117,6 +138,16 @@ export default class Homuncula {
     this.bgColor.set(...params.bgColor);
     (this.scene.fog as FogExp2).density = params.fogDensity;
 
+    this.envRampLow.value.set(...params.envRampLow);
+    this.envRampHigh.value.set(...params.envRampHigh);
+    this.envIntensity.value = params.envIntensity;
+
     this.moduleGrid?.update(deltaFrame);
+
+    this.pLight.distance = 0;
+    this.pLight.power = 1000;
+    this.pLight.decay = 2;
+
+    this.pLight.position.copy(this.camera.position);
   }
 }

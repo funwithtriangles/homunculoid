@@ -12,5 +12,21 @@ export default {
       sliderMin: 0,
       sliderMax: 0.2,
     },
+    {
+      key: "envRampLow",
+      valueType: "rgb",
+      defaultValue: [0, 0, 0],
+    },
+    {
+      key: "envRampHigh",
+      valueType: "rgb",
+      defaultValue: [1, 1, 1],
+    },
+    {
+      key: "envIntensity",
+      defaultValue: 1,
+      sliderMin: 0,
+      sliderMax: 4,
+    },
   ],
 };
