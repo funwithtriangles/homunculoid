@@ -3,10 +3,6 @@ import {
   EquirectangularReflectionMapping,
   MeshStandardNodeMaterial,
   Mesh,
-  DoubleSide,
-  MeshNormalNodeMaterial,
-  AttributeNode,
-  MeshBasicNodeMaterial,
   MeshStandardMaterial,
   FogExp2,
   Color,
@@ -80,10 +76,7 @@ export default class Homuncula {
       this.floorMat.needsUpdate = true;
     });
 
-    const faceCenter = attribute(
-      "_facecenter",
-      "vec3",
-    ) as unknown as AttributeNode<"vec3">;
+    const faceCenter = attribute("_facecenter", "vec3" as const);
 
     const distanceToCenter = distance(faceCenter.xy, vec2(0, 0));
 

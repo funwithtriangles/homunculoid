@@ -74,7 +74,7 @@ export default class ModuleGrid {
       cell.position.set(column * this.cellSize - this.offsetX, 0, 0);
 
       if (this.randomRotation) {
-        cell.rotation.y = Math.floor(this.random() * 4) * (Math.PI / 2);
+        cell.rotation.y = Math.floor(this.random() * 2) * Math.PI;
       }
 
       row.add(cell);
