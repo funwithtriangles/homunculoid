@@ -1,6 +1,9 @@
 import { Group, Object3D } from "three/webgpu";
+import { ImprovedNoise } from "three-stdlib";
 
 const CELL_WIDTH = 5;
+
+const perlin = new ImprovedNoise();
 
 export interface ModuleGridOptions {
   columns?: number;
@@ -11,6 +14,8 @@ export interface ModuleGridOptions {
   randomRotation?: boolean;
   /** World units travelled towards the camera per frame. */
   flySpeed?: number;
+  /** Grid cells per noise unit: lower values give larger patches of the same module. */
+  noiseScale?: number;
   seed?: number;
 }
 
@@ -23,7 +28,10 @@ export default class ModuleGrid {
   cellSize: number;
   randomRotation: boolean;
   flySpeed: number;
+  noiseScale: number;
   private randomState: number;
+  private noiseOffset: number;
+  private nextRowIndex = 0;
 
   constructor(modulesGroup: Group, options: ModuleGridOptions = {}) {
     const {
@@ -31,6 +39,7 @@ export default class ModuleGrid {
       rows = 8,
       randomRotation = true,
       flySpeed = 0.05,
+      noiseScale = 0.8,
       seed = 1,
     } = options;
 
@@ -38,7 +47,9 @@ export default class ModuleGrid {
     this.rows = rows;
     this.randomRotation = randomRotation;
     this.flySpeed = flySpeed;
+    this.noiseScale = noiseScale;
     this.randomState = seed >>> 0 || 1;
+    this.noiseOffset = seed * 13.37;
 
     this.modules = [...modulesGroup.children];
     this.modules.forEach((module) => (module.visible = false));
@@ -62,13 +73,25 @@ export default class ModuleGrid {
     return this.randomState / 4294967296;
   }
 
-  private fillRow(row: Group) {
+  /** Picks a module by thresholding perlin noise into even bands, one per module. */
+  private moduleAt(column: number, rowIndex: number) {
+    const noise = perlin.noise(
+      column * this.noiseScale + this.noiseOffset,
+      rowIndex * this.noiseScale + this.noiseOffset,
+      this.noiseOffset,
+    );
+
+    const normalised = Math.min(Math.max(noise * 0.5 + 0.5, 0), 0.999999);
+
+    return this.modules[Math.floor(normalised * this.modules.length)];
+  }
+
+  private fillRow(row: Group, rowIndex: number) {
     row.clear();
+    row.userData.rowIndex = rowIndex;
 
     for (let column = 0; column < this.columns; column++) {
-      const source =
-        this.modules[Math.floor(this.random() * this.modules.length)];
-      const cell = source.clone(true);
+      const cell = this.moduleAt(column, rowIndex).clone(true);
 
       cell.visible = true;
       cell.position.set(column * this.cellSize - this.offsetX, 0, 0);
@@ -90,11 +113,13 @@ export default class ModuleGrid {
       const row = new Group();
 
       row.position.z = index * this.cellSize - this.offsetZ;
-      this.fillRow(row);
+      this.fillRow(row, -index);
 
       this.root.add(row);
       this.rowGroups.push(row);
     }
+
+    this.nextRowIndex = -this.rows;
   }
 
   update(deltaFrame = 1) {
@@ -109,7 +134,7 @@ export default class ModuleGrid {
 
       if (row.position.z > recycleEdge) {
         row.position.z -= depth;
-        this.fillRow(row);
+        this.fillRow(row, this.nextRowIndex--);
       }
     });
   }
@@ -121,6 +146,7 @@ export default class ModuleGrid {
 
   regenerate(seed = Math.floor(Math.random() * 0xffffffff)) {
     this.randomState = seed >>> 0 || 1;
+    this.noiseOffset = seed * 13.37;
     this.build();
   }
 }
