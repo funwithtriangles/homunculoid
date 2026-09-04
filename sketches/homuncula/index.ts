@@ -16,23 +16,7 @@ import { GLTFLoader, RGBELoader, DRACOLoader } from "three-stdlib";
 import ModuleGrid from "./ModuleGrid";
 import hdrUrl from "./purple.hdr?url";
 import glbUrl from "./homuncula.glb?url";
-import {
-  attribute,
-  distance,
-  mul,
-  mx_worley_noise_float,
-  positionLocal,
-  positionWorld,
-  select,
-  time,
-  vec2,
-  vec3,
-  pmremTexture,
-  luminance,
-  mix,
-  uniform,
-  renderGroup,
-} from "three/tsl";
+import { pmremTexture, luminance, mix, uniform, renderGroup } from "three/tsl";
 
 const gltfLoader = new GLTFLoader();
 const rgbeLoader = new RGBELoader();
@@ -90,17 +74,6 @@ export default class Homuncula {
 
       const modules = this.model.getObjectByName("modules");
 
-      const floorObject = this.model.getObjectByName("shoot");
-      if (!floorObject || !(floorObject as Mesh).isMesh) {
-        console.warn("Could not find mesh named 'shoot' in GLB.");
-        return;
-      }
-
-      const floor = floorObject as Mesh;
-
-      // this.floorMat.copy(floor.material as MeshStandardMaterial);
-      // floor.material = this.floorMat;
-
       if (modules) {
         modules.traverse((child) => {
           if ((child as Mesh).isMesh) {
@@ -120,28 +93,6 @@ export default class Homuncula {
         console.warn("Could not find group named 'modules' in GLB.");
       }
     });
-
-    const faceCenter = attribute("_facecenter", "vec3" as const);
-
-    const distanceToCenter = distance(faceCenter.xy, vec2(0, 0));
-
-    const hasFaceCenter = select(distanceToCenter.greaterThan(0), 1, 0);
-
-    const wave = distance(faceCenter.xy, vec2(0, 0))
-      .mul(10)
-      // .sub(time.mul(3))
-      .sin()
-      .remap(-1, 1, 0, 0.05);
-
-    const noise = mx_worley_noise_float(
-      vec3(faceCenter.x.mul(5), faceCenter.y.mul(5), 0),
-    ).mul(1);
-
-    this.floorMat.positionNode = positionLocal.add(
-      0,
-      wave.add(noise.mul(wave.abs())).mul(hasFaceCenter),
-      0,
-    );
 
     rgbeLoader.load(hdrUrl, (texture) => {
       texture.mapping = EquirectangularReflectionMapping;
