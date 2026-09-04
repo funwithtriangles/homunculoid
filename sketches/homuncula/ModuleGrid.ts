@@ -30,6 +30,7 @@ export default class ModuleGrid {
   noiseScale: number;
   private randomState: number;
   private noiseOffset: number;
+  private pools: Object3D[][] = [];
 
   constructor(modulesGroup: Group, options: ModuleGridOptions = {}) {
     const {
@@ -51,6 +52,7 @@ export default class ModuleGrid {
       .map((name) => modulesGroup.getObjectByName(name)!)
       .filter(Boolean);
     this.modules.forEach((module) => (module.visible = false));
+    this.pools = this.modules.map(() => []);
 
     this.cellSize = options.cellSize ?? CELL_WIDTH;
 
@@ -72,7 +74,7 @@ export default class ModuleGrid {
   }
 
   /** Picks a module by thresholding perlin noise into even bands, one per module. */
-  private moduleAt(column: number, rowIndex: number) {
+  private moduleIndexAt(column: number, rowIndex: number) {
     const noise = perlin.noise(
       column * this.noiseScale + this.noiseOffset,
       rowIndex * this.noiseScale + this.noiseOffset,
@@ -81,21 +83,38 @@ export default class ModuleGrid {
 
     const normalised = Math.min(Math.max(noise * 0.5 + 0.5, 0), 0.999999);
 
-    return this.modules[Math.floor(normalised * this.modules.length)];
+    return Math.floor(normalised * this.modules.length);
+  }
+
+  /** Pools mean a module is only ever cloned while the grid warms up. */
+  private acquire(moduleIndex: number) {
+    const cell =
+      this.pools[moduleIndex].pop() ?? this.modules[moduleIndex].clone(true);
+
+    cell.visible = true;
+    cell.userData.moduleIndex = moduleIndex;
+
+    return cell;
+  }
+
+  private release(cell: Object3D) {
+    this.pools[cell.userData.moduleIndex]?.push(cell);
   }
 
   private fillRow(row: Group, rowIndex: number) {
+    row.children.forEach((cell) => this.release(cell));
     row.clear();
     row.userData.rowIndex = rowIndex;
 
     for (let column = 0; column < this.columns; column++) {
-      const cell = this.moduleAt(column, rowIndex).clone(true);
+      const cell = this.acquire(this.moduleIndexAt(column, rowIndex));
 
-      cell.visible = true;
       cell.position.set(column * this.cellSize - this.offsetX, 0, 0);
 
       if (this.randomRotation) {
         cell.rotation.y = Math.floor(this.random() * 2) * Math.PI;
+      } else {
+        cell.rotation.y = 0;
       }
 
       row.add(cell);
@@ -141,7 +160,11 @@ export default class ModuleGrid {
   }
 
   clear() {
-    this.rowGroups.forEach((row) => this.root.remove(row));
+    this.rowGroups.forEach((row) => {
+      row.children.forEach((cell) => this.release(cell));
+      row.clear();
+      this.root.remove(row);
+    });
     this.rowGroups.length = 0;
   }
 
