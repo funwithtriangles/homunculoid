@@ -16,6 +16,7 @@ import {
   mul,
   positionView,
   range,
+  renderGroup,
   smoothstep,
   step,
   sub,
@@ -65,7 +66,7 @@ export default class Particles {
     this.particleMaterial,
   );
   root = new THREE.Group();
-  cameraZ = uniform(0);
+  cameraZ = uniform(0).setGroup(renderGroup);
   sketchApi: SketchConstructorArg;
 
   constructor(sketchApi: SketchConstructorArg) {

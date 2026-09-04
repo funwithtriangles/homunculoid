@@ -1,4 +1,4 @@
-import { color, uniform } from "three/tsl";
+import { color, renderGroup, uniform } from "three/tsl";
 import { Color } from "three/webgpu";
 
 // Define the shape of a uniform parameter with better typing
@@ -13,8 +13,8 @@ type UniformValueType<T extends UniformParamConfig> =
   T["valueType"] extends "rgb"
     ? Color
     : T["valueType"] extends "number"
-    ? number
-    : T["defaultValue"];
+      ? number
+      : T["defaultValue"];
 
 // Create a mapped type that converts the params array to the correct uniform object shape
 type UniformsFromParams<T extends readonly UniformParamConfig[]> = {
@@ -24,19 +24,20 @@ type UniformsFromParams<T extends readonly UniformParamConfig[]> = {
 };
 
 export const convertParamsToUniforms = <
-  T extends readonly UniformParamConfig[]
+  T extends readonly UniformParamConfig[],
 >(
-  params: T
+  params: T,
 ): UniformsFromParams<T> => {
   const uniforms = {} as UniformsFromParams<T>;
 
+  // Render group so values upload once per render, even when objects sit still.
   const convert = (param: UniformParamConfig) => {
     switch (param.valueType) {
       case "rgb":
-        return uniform(new Color(...param.defaultValue));
+        return uniform(new Color(...param.defaultValue)).setGroup(renderGroup);
       case "number":
       default:
-        return uniform(param.defaultValue);
+        return uniform(param.defaultValue).setGroup(renderGroup);
     }
   };
 
@@ -56,10 +57,10 @@ export const convertParamsToUniforms = <
 export const updateUniforms = (
   uniformParamConfig: readonly UniformParamConfig[],
   uniforms: UniformsFromParams<any>,
-  params: any
+  params: any,
 ) => {
   const config = uniformParamConfig.flatMap((cfg) =>
-    "params" in cfg ? cfg.params : [cfg]
+    "params" in cfg ? cfg.params : [cfg],
   );
   for (const cfg of config) {
     if (!(cfg.key in params)) continue;
@@ -78,10 +79,10 @@ export const updateUniforms = (
 export const updateUniformsByChannel = (
   uniformParamConfig: readonly UniformParamConfig[],
   uniforms: UniformsFromParams<any>,
-  params: any
+  params: any,
 ) => {
   const config = uniformParamConfig.flatMap((cfg) =>
-    "params" in cfg ? cfg.params : [cfg]
+    "params" in cfg ? cfg.params : [cfg],
   );
   for (const cfg of config) {
     const key = `${cfg.key}_${params.matChannelA}`;

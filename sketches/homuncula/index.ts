@@ -31,6 +31,7 @@ import {
   luminance,
   mix,
   uniform,
+  renderGroup,
 } from "three/tsl";
 
 const gltfLoader = new GLTFLoader();
@@ -47,9 +48,10 @@ export default class Homuncula {
   moduleGrid: ModuleGrid | null = null;
   floorMat = new MeshStandardNodeMaterial();
   bgColor = new Color(0, 0, 1);
-  envRampLow = uniform(new Color(0x000000));
-  envRampHigh = uniform(new Color(0xff0000));
-  envIntensity = uniform(1);
+  // Render group so the value is uploaded once per render, not per render object.
+  envRampLow = uniform(new Color(0x000000)).setGroup(renderGroup);
+  envRampHigh = uniform(new Color(0xff0000)).setGroup(renderGroup);
+  envIntensity = uniform(1).setGroup(renderGroup);
   pLight = new PointLight(0xffffff, 1);
   scene: Scene;
   camera: PerspectiveCamera;

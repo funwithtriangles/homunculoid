@@ -78,8 +78,6 @@ export default class Camera {
       this.sketchApi.camera.zoom = p.orthographicZoom;
     }
 
-    this.sketchApi.camera.updateProjectionMatrix();
-
     if (this.isFirstFrame) {
       this.orbitDelta = p.orbitRot;
       this.latchDelta = this.orbitDelta;
@@ -141,5 +139,7 @@ export default class Camera {
     }
 
     this.isFirstFrame = false;
+
+    this.sketchApi.camera.updateProjectionMatrix();
   }
 }

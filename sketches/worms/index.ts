@@ -18,6 +18,7 @@ import {
   mul,
   positionView,
   range,
+  renderGroup,
   sin,
   smoothstep,
   step,
@@ -57,7 +58,7 @@ export default class Worms {
     this.particleMaterial,
   );
   root = new THREE.Group();
-  cameraZ = uniform(0);
+  cameraZ = uniform(0).setGroup(renderGroup);
   swimTime = uniform(0);
   sketchApi: SketchConstructorArg;
 
