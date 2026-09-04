@@ -79,7 +79,7 @@ export default class Homuncula {
     this.pLight.shadow.mapSize.width = 1024;
     this.pLight.shadow.mapSize.height = 1024;
     this.pLight.shadow.camera.near = 0.001;
-    this.pLight.shadow.camera.far = 1000;
+    this.pLight.shadow.camera.far = 10;
     this.pLight.shadow.bias = -0.00001;
 
     gltfLoader.load(glbUrl, (gltf) => {
