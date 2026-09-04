@@ -32,9 +32,14 @@ import { SpriteNodeMaterial } from "three/webgpu";
 import config from "./config";
 import { convertParamsToUniforms, updateUniforms } from "../../uniformsUtils";
 
+interface SketchConstructorArg {
+  camera: THREE.Camera;
+}
+
 interface UpdateParams {
   params: Record<string, any>;
   deltaFrame: number;
+  camera?: THREE.Camera;
 }
 
 const wormLength = 30;
@@ -52,10 +57,16 @@ export default class Worms {
     this.particleMaterial,
   );
   root = new THREE.Group();
-  particleTime = uniform(0);
+  cameraZ = uniform(0);
   swimTime = uniform(0);
+  sketchApi: SketchConstructorArg;
 
-  constructor() {
+  constructor(sketchApi: SketchConstructorArg) {
+    this.sketchApi = sketchApi;
+
+    // Positions come from the shader, so the origin bounding sphere would cull it.
+    this.instancedSprite.frustumCulled = false;
+
     const xRange = 50;
     const yRange = 100;
     const zRange = float(100);
@@ -75,11 +86,10 @@ export default class Worms {
 
     const scale = range(0.1, 1);
 
-    // const lifeTime = scaledTime.add(lifeRange);
-    const basePosZ = startRange
-      .add(this.particleTime)
-      .mod(zRange)
-      .sub(zRange.mul(0.5));
+    // Wrapped around the camera, so the worms always surround it as it travels.
+    const basePosZ = this.cameraZ.add(
+      startRange.sub(this.cameraZ).mod(zRange).sub(zRange.mul(0.5)),
+    );
     // const scaleRange = range(0.3, 2);
     // const rotateRange = range(0.1, 4);
 
@@ -125,8 +135,6 @@ export default class Worms {
 
     const delta = float(instanceIndex).mul(this.uniforms.pointDist);
 
-    const negZ = basePosZ.mul(-1);
-
     // this.particleMaterial.positionNode = offsetRange.sub(vec3(0, 0, basePosZ));
     this.particleMaterial.positionNode = vec3(
       baseX.add(
@@ -141,7 +149,7 @@ export default class Worms {
           ),
         )
         .add(40),
-      negZ.add(
+      basePosZ.add(
         cos(delta.add(this.swimTime).mul(this.uniforms.zSpeed)).mul(
           this.uniforms.zRad,
         ),
@@ -152,8 +160,8 @@ export default class Worms {
     this.particleMaterial.scaleNode = scale;
   }
 
-  update({ params: p, deltaFrame: f }: UpdateParams) {
-    this.particleTime.value += p.speed * f;
+  update({ params: p, deltaFrame: f, camera }: UpdateParams) {
+    this.cameraZ.value = (camera ?? this.sketchApi?.camera)?.position.z ?? 0;
     this.swimTime.value += p.swimSpeed * f;
 
     // this.instancedSprite.scale.set(10, 10, 10);

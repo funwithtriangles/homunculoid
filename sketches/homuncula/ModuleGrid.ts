@@ -1,4 +1,4 @@
-import { Group, Object3D } from "three/webgpu";
+import { Group, Object3D, Vector3 } from "three/webgpu";
 import { ImprovedNoise } from "three-stdlib";
 
 const CELL_WIDTH = 5;
@@ -14,8 +14,6 @@ export interface ModuleGridOptions {
   cellSize?: number;
   /** Snap each placed module to a random multiple of 90 degrees. */
   randomRotation?: boolean;
-  /** World units travelled towards the camera per frame. */
-  flySpeed?: number;
   /** Grid cells per noise unit: lower values give larger patches of the same module. */
   noiseScale?: number;
   seed?: number;
@@ -29,18 +27,15 @@ export default class ModuleGrid {
   rows: number;
   cellSize: number;
   randomRotation: boolean;
-  flySpeed: number;
   noiseScale: number;
   private randomState: number;
   private noiseOffset: number;
-  private nextRowIndex = 0;
 
   constructor(modulesGroup: Group, options: ModuleGridOptions = {}) {
     const {
       columns = 8,
       rows = 8,
       randomRotation = true,
-      flySpeed = 0.05,
       noiseScale = 1,
       seed = 1,
     } = options;
@@ -48,7 +43,6 @@ export default class ModuleGrid {
     this.columns = columns;
     this.rows = rows;
     this.randomRotation = randomRotation;
-    this.flySpeed = flySpeed;
     this.noiseScale = noiseScale;
     this.randomState = seed >>> 0 || 1;
     this.noiseOffset = seed * 13.37;
@@ -123,23 +117,25 @@ export default class ModuleGrid {
       this.root.add(row);
       this.rowGroups.push(row);
     }
-
-    this.nextRowIndex = -this.rows;
   }
 
-  update(deltaFrame = 1) {
-    if (this.rowGroups.length === 0 || this.flySpeed === 0) return;
+  /** Keeps the rows wrapped around the camera, which does the travelling. */
+  update(cameraPosition: Vector3) {
+    if (this.rowGroups.length === 0) return;
 
     const depth = this.rows * this.cellSize;
-    // Recycled once a row is a full cell past the front edge, so it pops in out of view.
-    const recycleEdge = this.offsetZ + this.cellSize;
+    // A row is recycled once it sits a full cell behind the camera.
+    const behind = cameraPosition.z + this.cellSize;
 
     this.rowGroups.forEach((row) => {
-      row.position.z += this.flySpeed * deltaFrame;
-
-      if (row.position.z > recycleEdge) {
+      while (row.position.z > behind) {
         row.position.z -= depth;
-        this.fillRow(row, this.nextRowIndex--);
+        this.fillRow(row, row.userData.rowIndex - this.rows);
+      }
+
+      while (row.position.z < behind - depth) {
+        row.position.z += depth;
+        this.fillRow(row, row.userData.rowIndex + this.rows);
       }
     });
   }

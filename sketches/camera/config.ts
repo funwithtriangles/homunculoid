@@ -43,6 +43,12 @@ export default {
           sliderMax: 20,
         },
         {
+          key: "flySpeed",
+          defaultValue: 0,
+          sliderMin: -1,
+          sliderMax: 1,
+        },
+        {
           key: "isRotating",
           title: "Auto Rotate",
           valueType: "boolean",

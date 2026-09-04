@@ -29,9 +29,14 @@ import { SpriteNodeMaterial } from "three/webgpu";
 import config from "./config";
 import { convertParamsToUniforms, updateUniforms } from "../../uniformsUtils";
 
+interface SketchConstructorArg {
+  camera: THREE.Camera;
+}
+
 interface UpdateParams {
   params: Record<string, any>;
   deltaFrame: number;
+  camera?: THREE.Camera;
 }
 
 const stroke = (
@@ -60,9 +65,15 @@ export default class Particles {
     this.particleMaterial,
   );
   root = new THREE.Group();
-  particleTime = uniform(0);
+  cameraZ = uniform(0);
+  sketchApi: SketchConstructorArg;
 
-  constructor() {
+  constructor(sketchApi: SketchConstructorArg) {
+    this.sketchApi = sketchApi;
+
+    // Positions come from the shader, so the origin bounding sphere would cull it.
+    this.instancedSprite.frustumCulled = false;
+
     const zRange = float(50);
     const xyRange = 50;
     this.instancedSprite.count = 5000;
@@ -75,11 +86,10 @@ export default class Particles {
     );
     const scale = range(0.1, 1);
 
-    // const lifeTime = scaledTime.add(lifeRange);
-    const posZ = startRange
-      .add(this.particleTime)
-      .mod(zRange)
-      .sub(zRange.mul(0.5));
+    // Wrapped around the camera, so the field always surrounds it as it travels.
+    const posZ = this.cameraZ.add(
+      startRange.sub(this.cameraZ).mod(zRange).sub(zRange.mul(0.5)),
+    );
     // const scaleRange = range(0.3, 2);
     // const rotateRange = range(0.1, 4);
 
@@ -121,13 +131,13 @@ export default class Particles {
       return densityFogFactor(d).oneMinus();
     })();
 
-    this.particleMaterial.positionNode = offsetRange.sub(vec3(-20, 0, posZ));
+    this.particleMaterial.positionNode = offsetRange.add(vec3(20, 0, posZ));
     this.particleMaterial.rotationNode = vec3(0, 2, 0);
     this.particleMaterial.scaleNode = scale;
   }
 
-  update({ params: p, deltaFrame: f }: UpdateParams) {
-    this.particleTime.value += p.speed * f;
+  update({ params: p, camera }: UpdateParams) {
+    this.cameraZ.value = (camera ?? this.sketchApi?.camera)?.position.z ?? 0;
 
     updateUniforms(config.params, this.uniforms, p);
   }

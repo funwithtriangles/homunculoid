@@ -28,6 +28,7 @@ export default class Camera {
   orbitDelta = 0;
   latchDelta = 0;
   lerpDelta = 0;
+  flyDelta = 0;
   head: THREE.Object3D | null = null;
   currentMode: "orbit" | "closeUp" = "orbit";
   currentType: "perspective" | "orthographic" = "perspective";
@@ -126,10 +127,13 @@ export default class Camera {
 
       rot = this.orbitDelta;
 
+      // Travel runs along -z, with the orbit rig riding on top of it.
+      this.flyDelta -= p.flySpeed * f;
+
       const x = Math.sin(rot) * p.orbitRad * p.bigOrbitRad;
       const z = Math.cos(rot) * p.orbitRad * p.bigOrbitRad;
-      this.lookAtPos.set(0, p.lookAtPosY, 0);
-      this.sketchApi.camera.position.set(x, p.camY, z);
+      this.lookAtPos.set(0, p.lookAtPosY, this.flyDelta);
+      this.sketchApi.camera.position.set(x, p.camY, z + this.flyDelta);
       this.sketchApi.camera.lookAt(this.lookAtPos);
     } else {
       this.sketchApi.camera.rotation.set(0, 0, 0);

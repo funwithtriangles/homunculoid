@@ -10,7 +10,7 @@ import {
   SpotLight,
   BasicShadowMap,
 } from "three/webgpu";
-import type { Scene, PerspectiveCamera } from "three/webgpu";
+import type { Scene, PerspectiveCamera, WebGPURenderer } from "three/webgpu";
 import { GLTFLoader, RGBELoader, DRACOLoader } from "three-stdlib";
 
 import ModuleGrid from "./ModuleGrid";
@@ -61,6 +61,7 @@ export default class Homuncula {
   }: {
     scene: Scene;
     camera: PerspectiveCamera;
+    renderer: WebGPURenderer;
   }) {
     this.scene = scene;
     scene.background = this.bgColor;
@@ -169,7 +170,7 @@ export default class Homuncula {
     this.envRampHigh.value.set(...params.envRampHigh);
     this.envIntensity.value = params.envIntensity;
 
-    this.moduleGrid?.update(deltaFrame);
+    this.moduleGrid?.update(this.camera.position);
 
     this.pLight.distance = 0;
     this.pLight.power = params.pLightIntensity;
