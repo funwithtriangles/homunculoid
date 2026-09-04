@@ -28,5 +28,11 @@ export default {
       sliderMin: 0,
       sliderMax: 4,
     },
+    {
+      key: "pLightIntensity",
+      defaultValue: 1,
+      sliderMin: 0,
+      sliderMax: 3,
+    },
   ],
 };

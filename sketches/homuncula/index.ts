@@ -172,7 +172,7 @@ export default class Homuncula {
     this.moduleGrid?.update(deltaFrame);
 
     this.pLight.distance = 0;
-    this.pLight.power = 100;
+    this.pLight.power = params.pLightIntensity;
     this.pLight.decay = 2;
 
     this.pLight.position.copy(this.camera.position);
