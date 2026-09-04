@@ -29,6 +29,8 @@ import {
   time,
   vec3,
   attribute,
+  mx_noise_float,
+  vec2,
 } from "three/tsl";
 
 const gltfLoader = new GLTFLoader();
@@ -89,16 +91,18 @@ export default class Homuncula {
 
     const sparkDelta = time.mul(5);
 
-    // const sparkPulse = sin(time.mul(5).add(1).div(2)).mul(2);
-    // const pipeOffset = 0;
-    const pulse = sin(positionWorld.z.add(sparkDelta.add(pipeOffset)).mul(0.1))
+    const sparkMask = mx_noise_float(
+      positionWorld.xz.mul(vec2(0.5, 0.3)),
+    ).smoothstep(0, 0.2);
+
+    const pulse = sin(positionWorld.z.add(sparkDelta.add(pipeOffset)).mul(0.2))
       .add(1)
       .div(2);
 
     const sparkColor = vec3(pulse)
-      .smoothstep(0.999, 1)
-      .mul(this.pipeSparkColor);
-    // .mul(sparkPulse);
+      .smoothstep(0.99, 1)
+      .mul(this.pipeSparkColor)
+      .mul(sparkMask);
 
     this.pipeMat.emissiveNode = sparkColor;
 
