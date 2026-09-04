@@ -8,12 +8,13 @@ import {
   Color,
   PointLight,
   SpotLight,
+  BasicShadowMap,
 } from "three/webgpu";
 import type { Scene, PerspectiveCamera } from "three/webgpu";
 import { GLTFLoader, RGBELoader, DRACOLoader } from "three-stdlib";
 
 import ModuleGrid from "./ModuleGrid";
-import hdrUrl from "./above.hdr?url";
+import hdrUrl from "./purple.hdr?url";
 import glbUrl from "./homuncula.glb?url";
 import {
   attribute,
@@ -53,7 +54,14 @@ export default class Homuncula {
   scene: Scene;
   camera: PerspectiveCamera;
 
-  constructor({ scene, camera }: { scene: Scene; camera: PerspectiveCamera }) {
+  constructor({
+    scene,
+    camera,
+    renderer,
+  }: {
+    scene: Scene;
+    camera: PerspectiveCamera;
+  }) {
     this.scene = scene;
     scene.background = this.bgColor;
     scene.fog = new FogExp2(scene.background, 0.1);
@@ -62,6 +70,16 @@ export default class Homuncula {
     this.camera = camera;
 
     this.root.add(this.pLight);
+
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = BasicShadowMap;
+
+    this.pLight.castShadow = true;
+    this.pLight.shadow.mapSize.width = 1024;
+    this.pLight.shadow.mapSize.height = 1024;
+    this.pLight.shadow.camera.near = 0.001;
+    this.pLight.shadow.camera.far = 1000;
+    this.pLight.shadow.bias = -0.00001;
 
     gltfLoader.load(glbUrl, (gltf) => {
       this.model = gltf.scene;
@@ -81,6 +99,15 @@ export default class Homuncula {
       // floor.material = this.floorMat;
 
       if (modules) {
+        modules.traverse((child) => {
+          if ((child as Mesh).isMesh) {
+            child.castShadow = true;
+            if (!child.name.includes("pipes")) {
+              child.receiveShadow = true;
+            }
+          }
+        });
+
         this.moduleGrid = new ModuleGrid(modules as Group, {
           columns: 16,
           rows: 16,
@@ -145,9 +172,12 @@ export default class Homuncula {
     this.moduleGrid?.update(deltaFrame);
 
     this.pLight.distance = 0;
-    this.pLight.power = 1000;
+    this.pLight.power = 100;
     this.pLight.decay = 2;
 
     this.pLight.position.copy(this.camera.position);
+    this.pLight.position.z = this.camera.position.z - 3;
+
+    this.pLight.shadow.needsUpdate = true;
   }
 }
