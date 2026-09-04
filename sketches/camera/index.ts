@@ -12,6 +12,9 @@ interface UpdateParams {
 
 const TAU = Math.PI * 2;
 
+// How far down the path the camera aims, which is what turns the tangent into a heading.
+const LOOK_AHEAD = 10;
+
 const { lerp } = THREE.MathUtils;
 
 const easeOutCubic = (x: number): number => {
@@ -125,14 +128,24 @@ export default class Camera {
 
       rot = this.orbitDelta;
 
-      // Travel runs along -z, with the orbit rig riding on top of it.
+      // Travel runs along -z, weaving on a sine wave, with the orbit rig riding on top.
       this.flyDelta -= p.flySpeed * f;
+
+      const pathZ = this.flyDelta;
+      const pathX = Math.sin(pathZ * p.waveFreq) * p.waveAmp;
+
+      const aheadZ = pathZ - LOOK_AHEAD;
+      const aheadX = Math.sin(aheadZ * p.waveFreq) * p.waveAmp;
 
       const x = Math.sin(rot) * p.orbitRad * p.bigOrbitRad;
       const z = Math.cos(rot) * p.orbitRad * p.bigOrbitRad;
-      this.lookAtPos.set(0, p.lookAtPosY, this.flyDelta);
-      this.sketchApi.camera.position.set(x, p.camY, z + this.flyDelta);
+      this.lookAtPos.set(aheadX, p.lookAtPosY, aheadZ);
+      this.sketchApi.camera.position.set(pathX + x, p.camY, pathZ + z);
       this.sketchApi.camera.lookAt(this.lookAtPos);
+
+      // Bank into the turn using the slope of the wave.
+      const slope = Math.cos(pathZ * p.waveFreq) * p.waveAmp * p.waveFreq;
+      this.sketchApi.camera.rotateZ(slope * p.tiltStrength);
     } else {
       this.sketchApi.camera.rotation.set(0, 0, 0);
       this.sketchApi.camera.position.set(0, 0, p.headCamDistance * 80);

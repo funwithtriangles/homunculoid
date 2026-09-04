@@ -49,6 +49,24 @@ export default {
           sliderMax: 1,
         },
         {
+          key: "waveFreq",
+          defaultValue: 0.02,
+          sliderMin: 0,
+          sliderMax: 0.2,
+        },
+        {
+          key: "waveAmp",
+          defaultValue: 0,
+          sliderMin: 0,
+          sliderMax: 50,
+        },
+        {
+          key: "tiltStrength",
+          defaultValue: 0,
+          sliderMin: -3,
+          sliderMax: 3,
+        },
+        {
           key: "isRotating",
           title: "Auto Rotate",
           valueType: "boolean",
