@@ -5,6 +5,8 @@ const CELL_WIDTH = 5;
 
 const perlin = new ImprovedNoise();
 
+const moduleNames = ["fat", "thin", "shoot"];
+
 export interface ModuleGridOptions {
   columns?: number;
   rows?: number;
@@ -39,7 +41,7 @@ export default class ModuleGrid {
       rows = 8,
       randomRotation = true,
       flySpeed = 0.05,
-      noiseScale = 2,
+      noiseScale = 1,
       seed = 1,
     } = options;
 
@@ -51,7 +53,9 @@ export default class ModuleGrid {
     this.randomState = seed >>> 0 || 1;
     this.noiseOffset = seed * 13.37;
 
-    this.modules = [...modulesGroup.children];
+    this.modules = moduleNames
+      .map((name) => modulesGroup.getObjectByName(name)!)
+      .filter(Boolean);
     this.modules.forEach((module) => (module.visible = false));
 
     this.cellSize = options.cellSize ?? CELL_WIDTH;
@@ -113,6 +117,7 @@ export default class ModuleGrid {
       const row = new Group();
 
       row.position.z = index * this.cellSize - this.offsetZ;
+      row.position.x = Math.random() * 6 - 3;
       this.fillRow(row, -index);
 
       this.root.add(row);
