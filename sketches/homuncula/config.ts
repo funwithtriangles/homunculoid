@@ -34,5 +34,15 @@ export default {
       sliderMin: 0,
       sliderMax: 3,
     },
+    {
+      key: "pLightColor",
+      valueType: "rgb",
+      defaultValue: [1, 1, 1],
+    },
+    {
+      key: "pipeSparkColor",
+      valueType: "rgb",
+      defaultValue: [1, 1, 1],
+    },
   ],
 };

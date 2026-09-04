@@ -9,6 +9,7 @@ import {
   PointLight,
   SpotLight,
   BasicShadowMap,
+  Object3D,
 } from "three/webgpu";
 import type { Scene, PerspectiveCamera, WebGPURenderer } from "three/webgpu";
 import { GLTFLoader, RGBELoader, DRACOLoader } from "three-stdlib";
@@ -16,7 +17,19 @@ import { GLTFLoader, RGBELoader, DRACOLoader } from "three-stdlib";
 import ModuleGrid from "./ModuleGrid";
 import hdrUrl from "./purple.hdr?url";
 import glbUrl from "./homuncula.glb?url";
-import { pmremTexture, luminance, mix, uniform, renderGroup } from "three/tsl";
+import {
+  pmremTexture,
+  luminance,
+  mix,
+  uniform,
+  renderGroup,
+  color,
+  sin,
+  positionWorld,
+  time,
+  vec3,
+  attribute,
+} from "three/tsl";
 
 const gltfLoader = new GLTFLoader();
 const rgbeLoader = new RGBELoader();
@@ -26,16 +39,19 @@ gltfLoader.setDRACOLoader(dracoLoader);
 
 gltfLoader.setDRACOLoader(dracoLoader);
 
+const isMesh = (object: any): object is Mesh => object.isMesh;
+
 export default class Homuncula {
   root = new Group();
   model: Group | null = null;
   moduleGrid: ModuleGrid | null = null;
-  floorMat = new MeshStandardNodeMaterial();
+  pipeMat = new MeshStandardNodeMaterial();
   bgColor = new Color(0, 0, 1);
   // Render group so the value is uploaded once per render, not per render object.
   envRampLow = uniform(new Color(0x000000)).setGroup(renderGroup);
   envRampHigh = uniform(new Color(0xff0000)).setGroup(renderGroup);
   envIntensity = uniform(1).setGroup(renderGroup);
+  pipeSparkColor = uniform(new Color(0xffffff));
   pLight = new PointLight(0xffffff, 1);
   scene: Scene;
   camera: PerspectiveCamera;
@@ -68,19 +84,49 @@ export default class Homuncula {
     this.pLight.shadow.camera.far = 10;
     this.pLight.shadow.bias = -0.00001;
 
+    const pipeIndex = attribute("_pipeindex", "float" as const);
+    const pipeOffset = pipeIndex.mul(100);
+
+    const sparkDelta = time.mul(5);
+
+    // const sparkPulse = sin(time.mul(5).add(1).div(2)).mul(2);
+    // const pipeOffset = 0;
+    const pulse = sin(positionWorld.z.add(sparkDelta.add(pipeOffset)).mul(0.1))
+      .add(1)
+      .div(2);
+
+    const sparkColor = vec3(pulse)
+      .smoothstep(0.999, 1)
+      .mul(this.pipeSparkColor);
+    // .mul(sparkPulse);
+
+    this.pipeMat.emissiveNode = sparkColor;
+
+    // this.pipeMat.emissiveNode = vec3(sin(pipeIndex.mul(0.5)).add(1).div(2));
+
     gltfLoader.load(glbUrl, (gltf) => {
       this.model = gltf.scene;
       this.root.add(this.model);
 
       const modules = this.model.getObjectByName("modules");
 
+      let hasCopiedPipeMat = false;
+
       if (modules) {
         modules.traverse((child) => {
-          if ((child as Mesh).isMesh) {
-            child.castShadow = true;
-            if (!child.name.includes("pipes")) {
-              child.receiveShadow = true;
+          if (!isMesh(child)) return;
+
+          child.castShadow = true;
+          if (child.name.includes("pipes")) {
+            if (!hasCopiedPipeMat) {
+              this.pipeMat.copy(child.material as MeshStandardMaterial);
+              hasCopiedPipeMat = true;
             }
+
+            child.material = this.pipeMat;
+            hasCopiedPipeMat = true;
+          } else {
+            child.receiveShadow = true;
           }
         });
 
@@ -123,10 +169,13 @@ export default class Homuncula {
     this.envRampHigh.value.set(...params.envRampHigh);
     this.envIntensity.value = params.envIntensity;
 
+    this.pipeSparkColor.value.set(...params.pipeSparkColor);
+
     this.moduleGrid?.update(this.camera.position);
 
     this.pLight.distance = 0;
     this.pLight.power = params.pLightIntensity;
+    this.pLight.color.set(...params.pLightColor);
     this.pLight.decay = 2;
 
     this.pLight.position.copy(this.camera.position);
