@@ -12,9 +12,6 @@ interface UpdateParams {
 
 const TAU = Math.PI * 2;
 
-// How far down the path the camera aims, which is what turns the tangent into a heading.
-const LOOK_AHEAD = 10;
-
 const { lerp } = THREE.MathUtils;
 
 const easeOutCubic = (x: number): number => {
@@ -134,7 +131,7 @@ export default class Camera {
       const pathZ = this.flyDelta;
       const pathX = Math.sin(pathZ * p.waveFreq) * p.waveAmp;
 
-      const aheadZ = pathZ - LOOK_AHEAD;
+      const aheadZ = pathZ - p.lookAhead;
       const aheadX = Math.sin(aheadZ * p.waveFreq) * p.waveAmp;
 
       const x = Math.sin(rot) * p.orbitRad * p.bigOrbitRad;

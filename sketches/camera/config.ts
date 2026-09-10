@@ -67,6 +67,12 @@ export default {
           sliderMax: 3,
         },
         {
+          key: "lookAhead",
+          defaultValue: 0,
+          sliderMin: 0,
+          sliderMax: 20,
+        },
+        {
           key: "isRotating",
           title: "Auto Rotate",
           valueType: "boolean",
