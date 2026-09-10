@@ -49,6 +49,11 @@ gltfLoader.setDRACOLoader(dracoLoader);
 
 const isMesh = (object: any): object is Mesh => object.isMesh;
 
+interface BoneItem {
+  bone: Bone;
+  index: number;
+}
+
 export default class Homuncula {
   root = new Group();
   model: Group | null = null;
@@ -68,6 +73,8 @@ export default class Homuncula {
   spineBones: Bone[] = [];
   legLBones: Bone[] = [];
   legRBones: Bone[] = [];
+  neckBones: Bone[] = [];
+  bodyBones: BoneItem[] = [];
   boneWiggleTime = 0;
 
   constructor({
@@ -161,10 +168,10 @@ export default class Homuncula {
       this.armRBones = this.registerBoneChain(
         this.model.getObjectByName("Arm003R") as Bone,
       );
-      this.spineBones = this.registerBoneChain(
-        this.model.getObjectByName("spine001") as Bone,
-        (bone) => bone.name.includes("spine"),
-      );
+      // this.spineBones = this.registerBoneChain(
+      //   this.model.getObjectByName("spine001") as Bone,
+      //   (bone) => bone.name.includes("spine"),
+      // );
 
       this.legRBones = this.registerBoneChain(
         this.model.getObjectByName("Leg008R") as Bone,
@@ -172,6 +179,60 @@ export default class Homuncula {
       this.legLBones = this.registerBoneChain(
         this.model.getObjectByName("Leg008L") as Bone,
       );
+
+      this.neckBones = this.registerBoneChain(
+        this.model.getObjectByName("head") as Bone,
+      );
+
+      this.spineBones = this.registerBoneChain(
+        this.model.getObjectByName("head") as Bone,
+        (bone) =>
+          bone.name.includes("spine") ||
+          bone.name.includes("head") ||
+          bone.name.includes("neck"),
+      );
+
+      this.bodyBones = [
+        ...this.spineBones.map((bone, index) => ({ bone, index })),
+        ...this.armLBones.map((bone, index) => ({ bone, index: index + 6 })),
+        ...this.armRBones.map((bone, index) => ({ bone, index: index + 6 })),
+        ...this.legLBones.map((bone, index) => ({ bone, index: index + 4 })),
+        ...this.legRBones.map((bone, index) => ({ bone, index: index + 4 })),
+      ];
+      //   {
+      //     bone: this.model.getObjectByName("head") as Bone,
+      //     index: 0,
+      //   },
+      //   {
+      //     bone: this.model.getObjectByName("neck") as Bone,
+      //     index: 1,
+      //   },
+      //   // {
+      //   //   bone: this.model.getObjectByName("Arm003L") as Bone,
+      //   //   index: 2,
+      //   // },
+      //   // {
+      //   //   bone: this.model.getObjectByName("Arm003R") as Bone,
+      //   //   index: 2,
+      //   // },
+      //   // ...this.armLBones.map((bone, index) => ({
+      //   //   bone,
+      //   //   index: index + 2,
+      //   // })),
+      //   // ...this.armRBones.map((bone, index) => ({
+      //   //   bone,
+      //   //   index: index + 2,
+      //   // })),
+      //   ...this.spineBones.map((bone, index) => ({ bone, index: index + 2 })),
+      //   // ...this.legLBones.map((bone, index) => ({
+      //   //   bone,
+      //   //   index: index + 3 + this.spineBones.length,
+      //   // })),
+      //   // ...this.legRBones.map((bone, index) => ({
+      //   //   bone,
+      //   //   index: index + 3 + this.spineBones.length,
+      //   // })),
+      // ];
     });
 
     rgbeLoader.load(hdrUrl, (texture) => {
@@ -205,12 +266,13 @@ export default class Homuncula {
     {
       waveAmpZ,
       waveAmpY,
+      positionOffset = 0,
     }: {
       waveAmpZ: number;
       waveAmpY: number;
+      positionOffset?: number;
     },
   ) => {
-    const positionOffset: number = 0;
     bones.forEach((bone, i) => {
       bone.rotation.copy(bone.userData.originalRotation);
 
@@ -233,7 +295,7 @@ export default class Homuncula {
     deltaFrame: number;
     scene?: any;
   }) {
-    this.boneWiggleTime += deltaTime;
+    this.boneWiggleTime += deltaTime * 0.5;
 
     this.bgColor.set(...params.bgColor);
     (this.scene.fog as FogExp2).density = params.fogDensity;
@@ -256,19 +318,68 @@ export default class Homuncula {
 
     this.pLight.shadow.needsUpdate = true;
 
-    const waveAmpZ = 0.3;
-    const waveAmpY = 0.2;
+    const waveAmpZ = 0.1;
+    const waveAmpY = 0.1;
 
-    this.waveBones(this.armLBones, { waveAmpZ, waveAmpY });
-    this.waveBones(this.armRBones, { waveAmpZ, waveAmpY });
-    this.waveBones(this.spineBones, { waveAmpZ, waveAmpY });
-    this.waveBones(this.legLBones, {
-      waveAmpZ: waveAmpZ * 2,
-      waveAmpY: waveAmpY,
-    });
-    this.waveBones(this.legRBones, {
-      waveAmpZ: waveAmpZ * 2,
-      waveAmpY: waveAmpY,
+    // this.waveBones(this.armLBones, { waveAmpZ, waveAmpY, positionOffset: -1 });
+    // this.waveBones(this.armRBones, { waveAmpZ, waveAmpY, positionOffset: -1 });
+    // this.waveBones(this.spineBones, { waveAmpZ, waveAmpY, positionOffset: 1 });
+    // this.waveBones(this.legLBones, {
+    //   waveAmpZ: waveAmpZ,
+    //   waveAmpY: waveAmpY,
+    //   positionOffset: 3,
+    // });
+    // this.waveBones(this.legRBones, {
+    //   waveAmpZ: waveAmpZ,
+    //   waveAmpY: waveAmpY,
+    //   positionOffset: 3,
+    // });
+
+    // this.waveBones(this.neckBones, {
+    //   waveAmpZ: waveAmpZ,
+    //   waveAmpY: waveAmpY,
+    //   positionOffset: 0,
+    // });
+
+    // const shoulderBoneL = this.armLBones[0];
+    // const shoulderBoneR = this.armRBones[0];
+    // if (shoulderBoneL && shoulderBoneR) {
+    //   shoulderBoneL.rotation.y +=
+    //     Math.sin(this.boneWiggleTime * Math.PI * 2) * 0.5;
+    //   shoulderBoneR.rotation.y +=
+    //     Math.sin(this.boneWiggleTime * Math.PI * 2) * 0.5;
+    // }
+
+    const mainWiggleAmp = 0.2;
+    const rotSpeed = 0.8;
+
+    this.root.position.x =
+      Math.sin(this.boneWiggleTime * Math.PI * 2) * mainWiggleAmp * 3;
+    this.root.position.z =
+      Math.cos(this.boneWiggleTime * Math.PI * 2) * mainWiggleAmp * 3;
+
+    this.root.rotation.y = -this.boneWiggleTime * Math.PI * 2 * rotSpeed;
+
+    this.bodyBones.forEach(({ bone, index }) => {
+      const originalRotation = bone.userData.originalRotation;
+
+      if (!originalRotation) return;
+
+      bone.rotation.copy(bone.userData.originalRotation);
+
+      const position = (index % 13) / 13;
+      const phase = position * Math.PI * 2;
+      const strengthZ = Math.sin(phase * 2 + this.boneWiggleTime * 2);
+      const strengthY = Math.cos(phase * 2 + this.boneWiggleTime * 2);
+
+      // bone.rotateOnWorldAxis(
+      //   new Vector3(0, 0, 1),
+      //   strengthY * 0.1 * mainWiggleAmp,
+      // );
+
+      bone.rotation.x += strengthY * mainWiggleAmp * rotSpeed;
+      bone.rotation.z += strengthZ * mainWiggleAmp * rotSpeed;
+      bone.rotation.y += strengthY * mainWiggleAmp * rotSpeed;
     });
   }
 }
