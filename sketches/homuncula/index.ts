@@ -10,8 +10,14 @@ import {
   SpotLight,
   BasicShadowMap,
   Object3D,
+  Vector3,
 } from "three/webgpu";
-import type { Scene, PerspectiveCamera, WebGPURenderer } from "three/webgpu";
+import type {
+  Scene,
+  PerspectiveCamera,
+  WebGPURenderer,
+  Bone,
+} from "three/webgpu";
 import { GLTFLoader, RGBELoader, DRACOLoader } from "three-stdlib";
 
 import ModuleGrid from "./ModuleGrid";
@@ -57,6 +63,12 @@ export default class Homuncula {
   pLight = new PointLight(0xffffff, 1);
   scene: Scene;
   camera: PerspectiveCamera;
+  armLBones: Bone[] = [];
+  armRBones: Bone[] = [];
+  spineBones: Bone[] = [];
+  legLBones: Bone[] = [];
+  legRBones: Bone[] = [];
+  boneWiggleTime = 0;
 
   constructor({
     scene,
@@ -142,6 +154,24 @@ export default class Homuncula {
       } else {
         console.warn("Could not find group named 'modules' in GLB.");
       }
+
+      this.armLBones = this.registerBoneChain(
+        this.model.getObjectByName("Arm003L") as Bone,
+      );
+      this.armRBones = this.registerBoneChain(
+        this.model.getObjectByName("Arm003R") as Bone,
+      );
+      this.spineBones = this.registerBoneChain(
+        this.model.getObjectByName("spine001") as Bone,
+        (bone) => bone.name.includes("spine"),
+      );
+
+      this.legRBones = this.registerBoneChain(
+        this.model.getObjectByName("Leg008R") as Bone,
+      );
+      this.legLBones = this.registerBoneChain(
+        this.model.getObjectByName("Leg008L") as Bone,
+      );
     });
 
     rgbeLoader.load(hdrUrl, (texture) => {
@@ -157,15 +187,54 @@ export default class Homuncula {
     });
   }
 
+  registerBoneChain = (
+    topBone: Bone,
+    filter: (bone: Bone) => boolean = () => true,
+  ) => {
+    const chain: Bone[] = [];
+    topBone.traverse((bone) => {
+      if (!filter(bone as Bone)) return;
+      bone.userData.originalRotation = bone.rotation.clone();
+      chain.push(bone as Bone);
+    });
+    return chain;
+  };
+
+  waveBones = (
+    bones: Bone[],
+    {
+      waveAmpZ,
+      waveAmpY,
+    }: {
+      waveAmpZ: number;
+      waveAmpY: number;
+    },
+  ) => {
+    const positionOffset: number = 0;
+    bones.forEach((bone, i) => {
+      bone.rotation.copy(bone.userData.originalRotation);
+
+      const position = ((i + positionOffset) % bones.length) / bones.length;
+      const phase = (position + this.boneWiggleTime) * Math.PI * 2;
+      const strengthZ = Math.sin(phase) * (position + 0.2);
+      const strengthY = Math.cos(phase) * (position + 0.2);
+
+      bone.rotation.z += strengthZ * waveAmpZ;
+      bone.rotation.y += strengthY * waveAmpY;
+    });
+  };
+
   update({
     params,
-    deltaFrame,
+    deltaTime,
     scene,
   }: {
     params: any;
     deltaFrame: number;
     scene?: any;
   }) {
+    this.boneWiggleTime += deltaTime;
+
     this.bgColor.set(...params.bgColor);
     (this.scene.fog as FogExp2).density = params.fogDensity;
 
@@ -186,5 +255,20 @@ export default class Homuncula {
     this.pLight.position.z = this.camera.position.z - 3;
 
     this.pLight.shadow.needsUpdate = true;
+
+    const waveAmpZ = 0.3;
+    const waveAmpY = 0.2;
+
+    this.waveBones(this.armLBones, { waveAmpZ, waveAmpY });
+    this.waveBones(this.armRBones, { waveAmpZ, waveAmpY });
+    this.waveBones(this.spineBones, { waveAmpZ, waveAmpY });
+    this.waveBones(this.legLBones, {
+      waveAmpZ: waveAmpZ * 2,
+      waveAmpY: waveAmpY,
+    });
+    this.waveBones(this.legRBones, {
+      waveAmpZ: waveAmpZ * 2,
+      waveAmpY: waveAmpY,
+    });
   }
 }
