@@ -57,6 +57,12 @@ export default {
       sliderMax: 3,
     },
     {
+      key: "swimTurnSpeed",
+      defaultValue: 0.6,
+      sliderMin: 0,
+      sliderMax: 3,
+    },
+    {
       key: "swimWaveLength",
       defaultValue: 0.8,
       sliderMin: 0.2,
@@ -65,12 +71,6 @@ export default {
     {
       key: "swimStiffness",
       defaultValue: 0.05,
-      sliderMin: 0,
-      sliderMax: 1,
-    },
-    {
-      key: "swimSpiral",
-      defaultValue: 0.6,
       sliderMin: 0,
       sliderMax: 1,
     },
@@ -105,10 +105,15 @@ export default {
       sliderMax: 1,
     },
     {
-      key: "swimPathAlign",
-      defaultValue: 1,
-      sliderMin: 0,
-      sliderMax: 1,
+      key: "swimPathFollow",
+      valueType: "boolean",
+      defaultValue: true,
+    },
+    {
+      key: "swimPathRoll",
+      defaultValue: 0,
+      sliderMin: -3.142,
+      sliderMax: 3.142,
     },
   ],
 };

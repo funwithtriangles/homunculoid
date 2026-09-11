@@ -147,7 +147,7 @@ export default class Homuncula {
         console.warn("Could not find group named 'modules' in GLB.");
       }
 
-      this.creature = new Creature(this.model, { debugSkeleton: true });
+      this.creature = new Creature(this.model, { debugSkeleton: false });
       this.root.add(this.creature.root);
 
       this.skeletonHelper = this.creature.skeletonHelper;

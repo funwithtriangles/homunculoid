@@ -2,6 +2,7 @@ import {
   Bone,
   Euler,
   Group,
+  Matrix4,
   Object3D,
   Quaternion,
   SkeletonHelper,
@@ -12,18 +13,22 @@ import {
 const IDENTITY = new Quaternion();
 const UP = new Vector3(0, 1, 0);
 
+/** Rate the carried orientation closes on its target, per second. */
+const FOLLOW_SMOOTHING = 0.5;
+
 export interface CreatureParams {
   swimAmp: number;
   swimFreq: number;
+  swimTurnSpeed: number;
   swimWaveLength: number;
   swimStiffness: number;
-  swimSpiral: number;
   swimTwist: number;
   limbAmp: number;
   limbLag: number;
   swimPathRadius: number;
   swimPathPitch: number;
-  swimPathAlign: number;
+  swimPathFollow: boolean;
+  swimPathRoll: number;
 }
 
 /**
@@ -35,6 +40,8 @@ export default class Creature {
   model: Object3D;
   bodyMesh: SkinnedMesh | null = null;
   skeletonHelper: SkeletonHelper | null = null;
+  turns: number = 0;
+  waves: number = 0;
 
   spineBones: Bone[] = [];
   armLBones: Bone[] = [];
@@ -56,6 +63,15 @@ export default class Creature {
   private bendEuler = new Euler();
   private tmpDelta = new Quaternion();
   private pathTangent = new Vector3();
+  private pathRadial = new Vector3();
+  private pathBinormal = new Vector3();
+  private pathBasis = new Matrix4();
+  private rollQuat = new Quaternion();
+  private yawQuat = new Quaternion();
+  private stepQuat = new Quaternion();
+  private renderQuat = new Quaternion();
+  private pathPosition = new Vector3();
+  private renderPosition = new Vector3();
   private pathQuat = new Quaternion();
 
   constructor(model: Object3D, { debugSkeleton = false } = {}) {
@@ -110,22 +126,20 @@ export default class Creature {
       const bone = object as Bone;
       const worldPos = bone.getWorldPosition(new Vector3());
 
-      // Arc length from the head, measured along the rest-pose chain.
+      // Arc length from the head, measured along the bind-pose chain.
       const parentArc = this.inheritedValue(bone, "arc");
-      const parentPos = bone.parent?.userData.restPoseWorldPos as
+      const parentPos = bone.parent?.userData.originalPosition as
         | Vector3
         | undefined;
       bone.userData.arc =
         parentPos === undefined
           ? 0
           : parentArc + parentPos.distanceTo(worldPos);
-      bone.userData.restPoseWorldPos = worldPos;
-      bone.userData.restPoseWorldQuat = bone.getWorldQuaternion(
-        new Quaternion(),
-      );
+      bone.userData.originalPosition = worldPos;
+      bone.userData.bindWorldQuat = bone.getWorldQuaternion(new Quaternion());
 
       if (!filter(bone)) return;
-      bone.userData.restPoseQuat = bone.quaternion.clone();
+      bone.userData.bindQuat = bone.quaternion.clone();
       chain.push(bone);
     });
 
@@ -147,7 +161,6 @@ export default class Creature {
     const bones = chains.flat();
     const total =
       bones.reduce((max, bone) => Math.max(max, bone.userData.arc), 0) || 1;
-
     bones.forEach((bone) => {
       bone.userData.s = bone.userData.arc / total;
     });
@@ -156,9 +169,7 @@ export default class Creature {
 
   /** Phase of the travelling wave at normalised arc length `s`, head -> tail. */
   phaseAt = (s: number, lag = 0) =>
-    (s / this.swim.waveLength - this.time * this.swim.frequency - lag) *
-    Math.PI *
-    2;
+    (s / this.swim.waveLength - this.waves - lag) * Math.PI * 2;
 
   envelopeAt = (s: number) =>
     this.swim.stiffness + (1 - this.swim.stiffness) * s * s;
@@ -193,7 +204,7 @@ export default class Creature {
 
   /**
    * Each bone stores its absolute bend, so a child only has to apply the
-   * difference from its parent's. Conjugating by the parent's rest-pose world
+   * difference from its parent's. Conjugating by the parent's bind-pose world
    * rotation moves that difference out of armature space and into the joint's
    * own frame, which is what keeps a multi-axis wave from shearing the chain.
    */
@@ -213,14 +224,14 @@ export default class Creature {
         .multiply(bend);
 
       const frame =
-        (bone.parent?.userData.restPoseWorldQuat as Quaternion) ?? IDENTITY;
+        (bone.parent?.userData.bindWorldQuat as Quaternion) ?? IDENTITY;
 
       bone.quaternion
         .copy(frame)
         .invert()
         .multiply(delta)
         .multiply(frame)
-        .multiply(bone.userData.restPoseQuat);
+        .multiply(bone.userData.bindQuat);
     });
   };
 
@@ -233,7 +244,6 @@ export default class Creature {
     this.swim.frequency = params.swimFreq;
     this.swim.waveLength = params.swimWaveLength;
     this.swim.stiffness = params.swimStiffness;
-    this.swim.spiral = params.swimSpiral;
     this.swim.twist = params.swimTwist;
 
     // Spine and legs are one continuous body; legs read as a forked tail.
@@ -248,29 +258,59 @@ export default class Creature {
 
     // The head rides a helix whose angle is locked to the wave phase, so the
     // body's own lateral offset lands it on the path the head already swept.
-    const turns = this.time * this.swim.frequency;
-    const angle = turns * Math.PI * 2;
+    const deltaTurns = params.swimTurnSpeed * deltaTime;
+    this.turns += deltaTurns;
+    this.waves += params.swimFreq * deltaTime;
+    const angle = this.turns * Math.PI * 2;
 
-    const radius =
-      ((this.swim.amplitude * this.swim.waveLength) / (Math.PI * 2)) *
-      this.bodyLength *
-      params.swimPathRadius;
+    const follow = params.swimPathFollow;
+
+    const radius = follow ? params.swimPathRadius : 0;
     const pitch = params.swimPathPitch;
 
-    this.root.position.set(
+    this.pathPosition.set(
       Math.cos(angle) * radius,
-      angle * radius * pitch,
-      Math.sin(angle) * radius * this.swim.spiral,
+      0,
+      Math.sin(angle) * radius,
     );
 
-    this.pathTangent
-      .set(-Math.sin(angle), pitch, Math.cos(angle) * this.swim.spiral)
-      .normalize();
+    // The frame is built at angle 0 and the revolution applied separately:
+    // slerping an already-revolved frame flips axis once it passes 180 degrees
+    // from identity. Radial is local X so the sway stays in the circle's plane.
+    this.pathTangent.set(0, pitch, 1).normalize();
+    this.pathRadial.set(1, 0, 0);
+    this.pathBinormal.crossVectors(this.pathRadial, this.pathTangent);
 
-    this.pathQuat.setFromUnitVectors(UP, this.pathTangent);
-    this.root.quaternion
-      .copy(IDENTITY)
-      .slerp(this.pathQuat, params.swimPathAlign);
+    this.pathBasis.makeBasis(
+      this.pathRadial,
+      this.pathTangent,
+      this.pathBinormal,
+    );
+
+    this.pathQuat
+      .setFromRotationMatrix(this.pathBasis)
+      .multiply(this.rollQuat.setFromAxisAngle(UP, params.swimPathRoll));
+
+    if (follow) {
+      // Carrying this frame's revolution over first leaves the ease with only
+      // the toggle gap to close, so it never lags behind a moving target and
+      // never unwinds the turns already accumulated.
+      const step = -deltaTurns * Math.PI * 2;
+      this.renderQuat.premultiply(this.stepQuat.setFromAxisAngle(UP, step));
+      this.renderPosition.applyAxisAngle(UP, step);
+
+      this.pathQuat.premultiply(this.yawQuat.setFromAxisAngle(UP, -angle));
+    } else {
+      this.pathQuat.copy(IDENTITY);
+    }
+
+    const ease = 1 - Math.exp(-FOLLOW_SMOOTHING * deltaTime);
+
+    this.renderQuat.slerp(this.pathQuat, ease);
+    this.renderPosition.lerp(this.pathPosition, ease);
+
+    this.root.quaternion.copy(this.renderQuat);
+    this.root.position.copy(this.renderPosition);
   }
 
   dispose() {
