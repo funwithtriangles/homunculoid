@@ -7,6 +7,7 @@ interface SketchConstructorArg {
 
 interface UpdateParams {
   params: Record<string, any>;
+  deltaTime: number;
   deltaFrame: number;
 }
 
@@ -25,23 +26,28 @@ const easeOutSine = (x: number): number => {
 export default class Camera {
   root: THREE.Group;
   lookAtPos: THREE.Vector3;
+  targetLookAtPos = new THREE.Vector3();
   orbitDelta = 0;
   latchDelta = 0;
   lerpDelta = 0;
   flyDelta = 0;
-  head: THREE.Object3D | null = null;
-  currentMode: "orbit" | "closeUp" = "orbit";
+  trackedObject: THREE.Object3D | null = null;
+  trackedObjectName = "";
+  currentMode: "fly" | "tracksObject" = "fly";
   currentType: "perspective" | "orthographic" = "perspective";
   isFirstFrame = true;
   perspectiveCamera = new THREE.PerspectiveCamera();
   orthographicCamera = new THREE.OrthographicCamera();
   sketchApi: SketchConstructorArg;
+  trackedPosition = new THREE.Vector3();
+  targetTrackedPosition = new THREE.Vector3();
+  trackedCameraPosition = new THREE.Vector3();
 
   constructor(sketchApi: SketchConstructorArg) {
     this.root = new THREE.Group();
 
     this.sketchApi = sketchApi;
-    const { camera, scene } = sketchApi;
+    const { camera } = sketchApi;
 
     this.sketchApi.camera = this.perspectiveCamera;
 
@@ -50,14 +56,6 @@ export default class Camera {
     this.lookAtPos = new THREE.Vector3();
 
     // this.sketchApi.camera.near = 0.0001;
-
-    // Hack to position cameras on JBoys head
-    setTimeout(() => {
-      const item = scene.getObjectByName("mixamorigHead");
-      if (item) {
-        this.head = item;
-      }
-    }, 3000);
   }
 
   update({ params: p, deltaTime: f }: UpdateParams) {
@@ -84,47 +82,47 @@ export default class Camera {
       this.lerpDelta = 1;
     }
 
-    if (this.currentMode != p.mode) {
-      if (p.mode === "closeUp") {
-        if (this.head) {
-          this.head.add(this.sketchApi.camera);
-          this.currentMode = "closeUp";
-        }
+    if (this.currentMode !== p.mode) {
+      this.currentMode = p.mode;
+    }
+
+    if (this.trackedObjectName !== p.trackedObjectName) {
+      this.trackedObjectName = p.trackedObjectName;
+      this.trackedObject = null;
+    }
+
+    if (this.trackedObjectName && !this.trackedObject) {
+      this.trackedObject = this.trackedObjectName
+        ? (this.sketchApi.scene.getObjectByName(this.trackedObjectName) ?? null)
+        : null;
+    }
+
+    if (p.isRotating && !this.isFirstFrame) {
+      this.orbitDelta = (this.orbitDelta + f * p.rotSpeed) % TAU;
+      this.lerpDelta = 0;
+      this.latchDelta = this.orbitDelta;
+    } else {
+      let diff = p.orbitRot - this.orbitDelta;
+      if (diff < 0) {
+        diff += TAU;
+      }
+
+      const step = (p.rotSpeed * f) / TAU;
+      const target = this.orbitDelta + diff;
+
+      if (this.lerpDelta < 1) {
+        this.lerpDelta += step;
+        this.orbitDelta = lerp(
+          this.latchDelta,
+          target,
+          easeOutCubic(this.lerpDelta),
+        );
       } else {
-        this.sketchApi.scene.add(this.sketchApi.camera);
-        this.currentMode = "orbit";
+        this.orbitDelta = target % TAU;
       }
     }
 
-    if (this.currentMode === "orbit") {
-      let rot;
-      if (p.isRotating && !this.isFirstFrame) {
-        this.orbitDelta = (this.orbitDelta + f * p.rotSpeed) % TAU;
-        this.lerpDelta = 0;
-        this.latchDelta = this.orbitDelta;
-      } else {
-        let diff = p.orbitRot - this.orbitDelta;
-        if (diff < 0) {
-          diff += TAU;
-        }
-
-        const step = (p.rotSpeed * f) / TAU;
-        const target = this.orbitDelta + diff;
-
-        if (this.lerpDelta < 1) {
-          this.lerpDelta += step;
-          this.orbitDelta = lerp(
-            this.latchDelta,
-            target,
-            easeOutCubic(this.lerpDelta),
-          );
-        } else {
-          this.orbitDelta = target % TAU;
-        }
-      }
-
-      rot = this.orbitDelta;
-
+    if (this.currentMode === "fly") {
       // Travel runs along -z, weaving on a sine wave, with the orbit rig riding on top.
       this.flyDelta -= p.flySpeed * f;
 
@@ -134,19 +132,42 @@ export default class Camera {
       const aheadZ = pathZ - p.lookAhead;
       const aheadX = Math.sin(aheadZ * p.waveFreq) * p.waveAmp;
 
-      const circX = Math.sin(rot) * p.orbitRad * p.bigOrbitRad;
-      const circZ = Math.cos(rot) * p.orbitRad * p.bigOrbitRad;
-      this.lookAtPos.set(aheadX, p.lookAtPosY, aheadZ);
-      this.sketchApi.camera.position.set(pathX + circX, p.camY, pathZ + circZ);
-      this.sketchApi.camera.lookAt(this.lookAtPos);
+      this.targetTrackedPosition.set(pathX, 0, pathZ);
+      this.targetLookAtPos.set(aheadX, p.lookAtPosY, aheadZ);
 
       // Bank into the turn using the slope of the wave.
       const slope = Math.cos(pathZ * p.waveFreq) * p.waveAmp * p.waveFreq;
       this.sketchApi.camera.rotateZ(slope * p.tiltStrength);
-    } else {
-      this.sketchApi.camera.rotation.set(0, 0, 0);
-      this.sketchApi.camera.position.set(0, 0, p.headCamDistance * 80);
+    } else if (this.trackedObject) {
+      this.trackedObject.getWorldPosition(this.targetTrackedPosition);
+      this.targetLookAtPos.copy(this.targetTrackedPosition);
     }
+
+    if (this.isFirstFrame) {
+      this.trackedPosition.copy(this.targetTrackedPosition);
+    } else {
+      this.trackedPosition.lerp(
+        this.targetTrackedPosition,
+        1 - Math.exp(-1 * f),
+      );
+    }
+
+    const circX = Math.sin(this.orbitDelta) * p.orbitRad * p.bigOrbitRad;
+    const circZ = Math.cos(this.orbitDelta) * p.orbitRad * p.bigOrbitRad;
+    this.trackedCameraPosition.set(
+      this.trackedPosition.x + circX,
+      this.trackedPosition.y + p.camY,
+      this.trackedPosition.z + circZ,
+    );
+    this.sketchApi.camera.position.copy(this.trackedCameraPosition);
+
+    if (this.isFirstFrame) {
+      this.lookAtPos.copy(this.targetLookAtPos);
+    } else {
+      this.lookAtPos.lerp(this.targetLookAtPos, 1 - Math.exp(-1 * f));
+    }
+
+    this.sketchApi.camera.lookAt(this.lookAtPos);
 
     this.isFirstFrame = false;
 

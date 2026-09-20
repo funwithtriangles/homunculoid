@@ -77,6 +77,7 @@ export default class Creature {
   constructor(model: Object3D, { debugSkeleton = false } = {}) {
     this.model = model;
     this.root.add(model);
+    this.root.name = "creatureRoot";
 
     this.bodyMesh = model.getObjectByName("body") as SkinnedMesh | null;
 

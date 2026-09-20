@@ -38,11 +38,6 @@ export default {
           sliderMax: 100,
         },
         {
-          key: "headCamDistance",
-          defaultValue: 0,
-          sliderMax: 20,
-        },
-        {
           key: "flySpeed",
           defaultValue: 0,
           sliderMin: -1,
@@ -121,17 +116,22 @@ export default {
           key: "mode",
           title: "Camera Mode",
           valueType: "enum",
-          defaultValue: "orbit",
+          defaultValue: "fly",
           options: [
             {
-              label: "Orbit",
-              value: "orbit",
+              label: "Fly",
+              value: "fly",
             },
             {
-              label: "Close Up",
-              value: "closeUp",
+              label: "Tracks Object",
+              value: "tracksObject",
             },
           ],
+        },
+        {
+          key: "trackedObjectName",
+          valueType: "string",
+          defaultValue: "",
         },
         {
           key: "cameraType",
