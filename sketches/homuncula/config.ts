@@ -45,6 +45,11 @@ export default {
       defaultValue: [1, 1, 1],
     },
     {
+      key: "isCreatureVisible",
+      valueType: "boolean",
+      defaultValue: false,
+    },
+    {
       key: "swimAmp",
       defaultValue: 0.5,
       sliderMin: 0,

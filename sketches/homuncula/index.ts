@@ -56,6 +56,8 @@ export default class Homuncula {
   envIntensity = uniform(1).setGroup(renderGroup);
   pipeSparkColor = uniform(new Color(0xffffff));
   pLight = new PointLight(0xffffff, 1);
+  creatureAnchor = new Group();
+  isCreatureVisible = false;
   scene: Scene;
   camera: PerspectiveCamera;
   skeletonHelper: SkeletonHelper | null = null;
@@ -77,6 +79,7 @@ export default class Homuncula {
     this.camera = camera;
 
     this.root.add(this.pLight);
+    this.creatureAnchor.visible = this.isCreatureVisible;
 
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = BasicShadowMap;
@@ -137,18 +140,21 @@ export default class Homuncula {
 
         // Keep the source modules off the creature so they don't ride its path.
         this.root.add(modules);
-
-        this.moduleGrid = new ModuleGrid(modules as Group, {
-          columns: 16,
-          rows: 16,
-        });
-        this.root.add(this.moduleGrid.root);
       } else {
         console.warn("Could not find group named 'modules' in GLB.");
       }
 
       this.creature = new Creature(this.model, { debugSkeleton: false });
-      this.root.add(this.creature.root);
+      this.creatureAnchor.add(this.creature.root);
+      this.root.add(this.creatureAnchor);
+
+      if (modules) {
+        this.moduleGrid = new ModuleGrid(modules as Group, {
+          columns: 16,
+          rows: 16,
+        });
+        this.root.add(this.moduleGrid.root);
+      }
 
       this.skeletonHelper = this.creature.skeletonHelper;
       if (this.skeletonHelper) this.scene.add(this.skeletonHelper);
@@ -185,7 +191,13 @@ export default class Homuncula {
 
     this.pipeSparkColor.value.set(...params.pipeSparkColor);
 
-    this.moduleGrid?.update(this.camera.position);
+    if (params.isCreatureVisible !== this.isCreatureVisible) {
+      this.isCreatureVisible = params.isCreatureVisible;
+      this.creatureAnchor.visible = this.isCreatureVisible;
+      this.moduleGrid?.setCreature(
+        this.isCreatureVisible ? this.creatureAnchor : null,
+      );
+    }
 
     this.pLight.distance = 0;
     this.pLight.power = params.pLightIntensity;
@@ -198,6 +210,7 @@ export default class Homuncula {
     this.pLight.shadow.needsUpdate = true;
 
     this.creature?.update({ params, deltaTime });
+    this.moduleGrid?.update(this.camera.position);
   }
 
   dispose() {

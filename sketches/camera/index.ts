@@ -134,10 +134,10 @@ export default class Camera {
       const aheadZ = pathZ - p.lookAhead;
       const aheadX = Math.sin(aheadZ * p.waveFreq) * p.waveAmp;
 
-      const x = Math.sin(rot) * p.orbitRad * p.bigOrbitRad;
-      const z = Math.cos(rot) * p.orbitRad * p.bigOrbitRad;
+      const circX = Math.sin(rot) * p.orbitRad * p.bigOrbitRad;
+      const circZ = Math.cos(rot) * p.orbitRad * p.bigOrbitRad;
       this.lookAtPos.set(aheadX, p.lookAtPosY, aheadZ);
-      this.sketchApi.camera.position.set(pathX + x, p.camY, pathZ + z);
+      this.sketchApi.camera.position.set(pathX + circX, p.camY, pathZ + circZ);
       this.sketchApi.camera.lookAt(this.lookAtPos);
 
       // Bank into the turn using the slope of the wave.
