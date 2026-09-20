@@ -50,6 +50,12 @@ export default {
       defaultValue: false,
     },
     {
+      key: "swimSpeed",
+      defaultValue: 0,
+      sliderMin: 0,
+      sliderMax: 10,
+    },
+    {
       key: "swimAmp",
       defaultValue: 0.5,
       sliderMin: 0,

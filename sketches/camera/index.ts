@@ -32,7 +32,6 @@ export default class Camera {
   lerpDelta = 0;
   flyDelta = 0;
   trackedObject: THREE.Object3D | null = null;
-  trackedObjectName = "";
   currentMode: "fly" | "tracksObject" = "fly";
   currentType: "perspective" | "orthographic" = "perspective";
   isFirstFrame = true;
@@ -86,14 +85,15 @@ export default class Camera {
       this.currentMode = p.mode;
     }
 
-    if (this.trackedObjectName !== p.trackedObjectName) {
-      this.trackedObjectName = p.trackedObjectName;
-      this.trackedObject = null;
-    }
+    console.log(this.currentMode, p.trackedObjectName, this.trackedObject);
 
-    if (this.trackedObjectName && !this.trackedObject) {
-      this.trackedObject = this.trackedObjectName
-        ? (this.sketchApi.scene.getObjectByName(this.trackedObjectName) ?? null)
+    if (
+      this.currentMode === "tracksObject" &&
+      p.trackedObjectName &&
+      !this.trackedObject
+    ) {
+      this.trackedObject = p.trackedObjectName
+        ? (this.sketchApi.scene.getObjectByName(p.trackedObjectName) ?? null)
         : null;
     }
 
@@ -140,7 +140,10 @@ export default class Camera {
       this.sketchApi.camera.rotateZ(slope * p.tiltStrength);
     } else if (this.trackedObject) {
       this.trackedObject.getWorldPosition(this.targetTrackedPosition);
-      this.targetLookAtPos.copy(this.targetTrackedPosition);
+
+      this.targetLookAtPos
+        .copy(this.targetTrackedPosition)
+        .add(new THREE.Vector3(0, p.lookAtPosY, 0));
     }
 
     if (this.isFirstFrame) {

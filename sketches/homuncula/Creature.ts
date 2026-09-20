@@ -29,6 +29,7 @@ export interface CreatureParams {
   swimPathPitch: number;
   swimPathFollow: boolean;
   swimPathRoll: number;
+  swimSpeed: number;
 }
 
 /**
@@ -49,7 +50,6 @@ export default class Creature {
   legLBones: Bone[] = [];
   legRBones: Bone[] = [];
 
-  time = 0;
   bodyLength = 1;
   swim = {
     amplitude: 0.5,
@@ -239,8 +239,6 @@ export default class Creature {
   update({ params, deltaTime }: { params: CreatureParams; deltaTime: number }) {
     if (!this.spineBones.length) return;
 
-    this.time += deltaTime;
-
     this.swim.amplitude = params.swimAmp;
     this.swim.frequency = params.swimFreq;
     this.swim.waveLength = params.swimWaveLength;
@@ -259,9 +257,9 @@ export default class Creature {
 
     // The head rides a helix whose angle is locked to the wave phase, so the
     // body's own lateral offset lands it on the path the head already swept.
-    const deltaTurns = params.swimTurnSpeed * deltaTime;
+    const deltaTurns = params.swimTurnSpeed * params.swimSpeed * deltaTime;
     this.turns += deltaTurns;
-    this.waves += params.swimFreq * deltaTime;
+    this.waves += params.swimFreq * params.swimSpeed * deltaTime;
     const angle = this.turns * Math.PI * 2;
 
     const follow = params.swimPathFollow;
@@ -271,7 +269,7 @@ export default class Creature {
 
     this.pathPosition.set(
       Math.cos(angle) * radius,
-      0,
+      this.waves,
       Math.sin(angle) * radius,
     );
 
