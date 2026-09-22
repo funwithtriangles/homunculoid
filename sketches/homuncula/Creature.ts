@@ -1,8 +1,27 @@
 import {
+  abs,
+  float,
+  min,
+  positionGeometry,
+  mx_worley_noise_vec2,
+  step,
+  time,
+  uv,
+  vec2,
+  vec3,
+  mx_worley_noise_float,
+  mx_noise_float,
+  uniform,
+} from "three/tsl";
+import {
   Bone,
+  Color,
+  DoubleSide,
   Euler,
   Group,
   Matrix4,
+  Mesh,
+  MeshBasicNodeMaterial,
   Object3D,
   Quaternion,
   SkeletonHelper,
@@ -30,6 +49,7 @@ export interface CreatureParams {
   swimPathFollow: boolean;
   swimPathRoll: number;
   swimSpeed: number;
+  pipeSparkColor: [number, number, number];
 }
 
 /**
@@ -50,6 +70,8 @@ export default class Creature {
   armRBones: Bone[] = [];
   legLBones: Bone[] = [];
   legRBones: Bone[] = [];
+  armBandL: Mesh | null = null;
+  energyColor = uniform(new Color(0xffffff));
 
   bodyLength = 1;
   swim = {
@@ -102,6 +124,39 @@ export default class Creature {
     this.legRBones = this.registerBoneChain(
       model.getObjectByName("Leg008R") as Bone,
     );
+
+    this.armBandL = model.getObjectByName("armBandL") as Mesh | null;
+
+    if (this.armBandL) {
+      const armBandMat = new MeshBasicNodeMaterial();
+      armBandMat.side = DoubleSide;
+      this.armBandL.material = armBandMat;
+
+      const fadeOffTop = uv().y.smoothstep(0.0, 0.3);
+      const fadeOffBottom = uv().y.smoothstep(0.7, 1.0).oneMinus();
+
+      const grid = uv().mul(vec2(4, 3));
+      // const grid = uv().mul(mx_worley_noise_vec2());
+      const linePos = mx_noise_float(grid.y.sub(time.mul(1)));
+      // const linePos = grid.y.sub(time.mul(1));
+
+      const dist = abs(grid.x.sub(linePos).add(time)).mod(1);
+      const wrappedDist = min(dist, float(1).sub(dist));
+
+      const widthNoise = mx_noise_float(uv().y.add(time.mul(1))).remap(
+        0,
+        1,
+        0.05,
+        0.3,
+      );
+
+      const lineWidth = widthNoise.mul(fadeOffTop).mul(fadeOffBottom);
+
+      const line = step(wrappedDist, lineWidth);
+      armBandMat.transparent = true;
+      armBandMat.opacityNode = line;
+      armBandMat.colorNode = vec3(line).mul(this.energyColor);
+    }
 
     this.normalizeArcLengths([
       this.spineBones,
@@ -245,6 +300,8 @@ export default class Creature {
     this.swim.waveLength = params.swimWaveLength;
     this.swim.stiffness = params.swimStiffness;
     this.swim.twist = params.swimTwist;
+
+    this.energyColor.value.set(...params.pipeSparkColor);
 
     // Spine and legs are one continuous body; legs read as a forked tail.
     this.applySwimWave(this.spineBones);

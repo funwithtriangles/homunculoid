@@ -108,8 +108,6 @@ export default class Homuncula {
 
     // this.pipeMat.emissiveNode = vec3(sin(pipeIndex.mul(0.5)).add(1).div(2));
 
-    console.log(gltfLoader.meshoptDecoder);
-
     gltfLoader.load(glbUrl, (gltf) => {
       this.model = gltf.scene;
 
@@ -179,6 +177,8 @@ export default class Homuncula {
     deltaFrame: number;
     scene?: any;
   }) {
+    if (this.moduleGrid) this.moduleGrid.isVisible = !params.hideFloor;
+
     this.bgColor.set(...params.bgColor);
     (this.scene.fog as FogExp2).density = params.fogDensity;
 

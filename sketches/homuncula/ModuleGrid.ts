@@ -31,6 +31,7 @@ export default class ModuleGrid {
   randomRotation: boolean;
   noiseScale: number;
   creature: Object3D | null;
+  isVisible: boolean;
   private randomState: number;
   private noiseOffset: number;
   private pools: Object3D[][] = [];
@@ -56,6 +57,7 @@ export default class ModuleGrid {
     this.noiseScale = noiseScale;
     this.randomState = seed >>> 0 || 1;
     this.noiseOffset = seed * 13.37;
+    this.isVisible = true;
 
     this.modules = moduleNames
       .map((name) => modulesGroup.getObjectByName(name)!)
@@ -230,6 +232,8 @@ export default class ModuleGrid {
 
     this.ensureCreatureRow(cameraPosition);
     this.creatureX = cameraPosition.x;
+
+    this.root.visible = this.isVisible;
 
     const depth = this.rows * this.cellSize;
     // A row is recycled once it's behind the camera by half the grid depth.

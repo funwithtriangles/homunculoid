@@ -126,6 +126,16 @@ export default {
       sliderMin: -3.142,
       sliderMax: 3.142,
     },
+    {
+      groupTitle: "Debug",
+      params: [
+        {
+          key: "hideFloor",
+          valueType: "boolean",
+          defaultValue: false,
+        },
+      ],
+    },
   ],
   shots: [
     {

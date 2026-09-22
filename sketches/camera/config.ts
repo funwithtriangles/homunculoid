@@ -152,4 +152,9 @@ export default {
       ],
     },
   ],
+  shots: [
+    {
+      key: "resetTrackedObject",
+    },
+  ],
 };

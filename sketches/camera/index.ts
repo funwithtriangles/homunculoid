@@ -60,6 +60,16 @@ export default class Camera {
   }
 
   update({ params: p, deltaTime: f }: UpdateParams) {
+    // Check if the tracked object has changed and update the reference accordingly.
+    if (this.trackedObject && p.trackedObjectName) {
+      const newObject =
+        this.sketchApi.scene.getObjectByName(p.trackedObjectName) ?? null;
+      if (newObject !== this.trackedObject) {
+        this.trackedObject = newObject;
+        this.resetTrackedObject();
+      }
+    }
+
     if (this.currentType !== p.cameraType) {
       if (p.cameraType === "perspective") {
         this.sketchApi.camera = this.perspectiveCamera;
@@ -187,6 +197,11 @@ export default class Camera {
   }
 
   dispose() {
+    this.resetTrackedObject();
+  }
+
+  resetTrackedObject() {
+    this.isFirstFrame = true;
     this.trackedObject = null;
   }
 }
