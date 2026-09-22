@@ -31,6 +31,8 @@ export default class Camera {
   latchDelta = 0;
   lerpDelta = 0;
   flyDelta = 0;
+  zRot = 0;
+  targetZRot = 0;
   trackedObject: THREE.Object3D | null = null;
   currentMode: "fly" | "tracksObject" = "fly";
   currentType: "perspective" | "orthographic" = "perspective";
@@ -85,8 +87,6 @@ export default class Camera {
       this.currentMode = p.mode;
     }
 
-    console.log(this.currentMode, p.trackedObjectName, this.trackedObject);
-
     if (
       this.currentMode === "tracksObject" &&
       p.trackedObjectName &&
@@ -136,9 +136,10 @@ export default class Camera {
       this.targetLookAtPos.set(aheadX, p.lookAtPosY, aheadZ);
 
       // Bank into the turn using the slope of the wave.
-      const slope = Math.cos(pathZ * p.waveFreq) * p.waveAmp * p.waveFreq;
-      this.sketchApi.camera.rotateZ(slope * p.tiltStrength);
+      const slope = Math.cos(pathZ * p.waveFreq) * p.waveAmp;
+      this.targetZRot = slope * p.tiltStrength;
     } else if (this.trackedObject) {
+      this.targetZRot = 0;
       this.trackedObject.getWorldPosition(this.targetTrackedPosition);
 
       this.targetLookAtPos
@@ -172,8 +173,20 @@ export default class Camera {
 
     this.sketchApi.camera.lookAt(this.lookAtPos);
 
+    if (this.isFirstFrame) {
+      this.zRot = this.targetZRot;
+    } else {
+      this.zRot = lerp(this.zRot, this.targetZRot, 1 - Math.exp(-1 * f));
+    }
+
+    this.sketchApi.camera.rotateZ(this.zRot);
+
     this.isFirstFrame = false;
 
     this.sketchApi.camera.updateProjectionMatrix();
+  }
+
+  dispose() {
+    this.trackedObject = null;
   }
 }

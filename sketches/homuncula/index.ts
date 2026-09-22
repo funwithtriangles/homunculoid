@@ -11,7 +11,7 @@ import {
   SkeletonHelper,
 } from "three/webgpu";
 import { Scene, PerspectiveCamera, WebGPURenderer } from "three/webgpu";
-import { GLTFLoader, RGBELoader, DRACOLoader } from "three-stdlib";
+import { GLTFLoader, RGBELoader } from "three-stdlib";
 
 import ModuleGrid from "./ModuleGrid";
 import Creature from "./Creature";
@@ -35,11 +35,6 @@ import {
 
 const gltfLoader = new GLTFLoader();
 const rgbeLoader = new RGBELoader();
-
-const dracoLoader = new DRACOLoader();
-gltfLoader.setDRACOLoader(dracoLoader);
-
-gltfLoader.setDRACOLoader(dracoLoader);
 
 const isMesh = (object: any): object is Mesh => object.isMesh;
 
@@ -112,6 +107,8 @@ export default class Homuncula {
     this.pipeMat.emissiveNode = sparkColor;
 
     // this.pipeMat.emissiveNode = vec3(sin(pipeIndex.mul(0.5)).add(1).div(2));
+
+    console.log(gltfLoader.meshoptDecoder);
 
     gltfLoader.load(glbUrl, (gltf) => {
       this.model = gltf.scene;
@@ -211,6 +208,11 @@ export default class Homuncula {
 
     this.creature?.update({ params, deltaTime });
     this.moduleGrid?.update(this.camera.position);
+  }
+
+  creatureReset() {
+    console.log("Resetting creature");
+    this.creature?.reset();
   }
 
   dispose() {

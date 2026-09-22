@@ -127,4 +127,9 @@ export default {
       sliderMax: 3.142,
     },
   ],
+  shots: [
+    {
+      key: "creatureReset",
+    },
+  ],
 };

@@ -66,6 +66,8 @@ export default class Particles {
     this.particleMaterial,
   );
   root = new THREE.Group();
+  cameraX = uniform(0).setGroup(renderGroup);
+  cameraY = uniform(0).setGroup(renderGroup);
   cameraZ = uniform(0).setGroup(renderGroup);
   sketchApi: SketchConstructorArg;
 
@@ -75,21 +77,25 @@ export default class Particles {
     // Positions come from the shader, so the origin bounding sphere would cull it.
     this.instancedSprite.frustumCulled = false;
 
+    const xyRange = float(100);
     const zRange = float(50);
-    const xyRange = 50;
     this.instancedSprite.count = 5000;
     this.root.add(this.instancedSprite);
 
-    const startRange = range(0, zRange);
-    const offsetRange = range(
-      vec3(-xyRange, -xyRange, 0),
-      vec3(xyRange, xyRange, 0),
-    );
+    const startRangeX = range(0, xyRange);
+    const startRangeY = range(0, xyRange);
+    const startRangeZ = range(0, zRange);
     const scale = range(0.1, 1);
 
     // Wrapped around the camera, so the field always surrounds it as it travels.
+    const posX = this.cameraX.add(
+      startRangeX.sub(this.cameraX).mod(xyRange).sub(xyRange.mul(0.5)),
+    );
+    const posY = this.cameraY.add(
+      startRangeY.sub(this.cameraY).mod(xyRange).sub(xyRange.mul(0.5)),
+    );
     const posZ = this.cameraZ.add(
-      startRange.sub(this.cameraZ).mod(zRange).sub(zRange.mul(0.5)),
+      startRangeZ.sub(this.cameraZ).mod(zRange).sub(zRange.mul(0.5)),
     );
     // const scaleRange = range(0.3, 2);
     // const rotateRange = range(0.1, 4);
@@ -132,13 +138,17 @@ export default class Particles {
       return densityFogFactor(d).oneMinus();
     })();
 
-    this.particleMaterial.positionNode = offsetRange.add(vec3(20, 0, posZ));
+    this.particleMaterial.positionNode = vec3(posX.add(20), posY, posZ);
     this.particleMaterial.rotationNode = vec3(0, 2, 0);
     this.particleMaterial.scaleNode = scale;
   }
 
   update({ params: p, camera }: UpdateParams) {
-    this.cameraZ.value = (camera ?? this.sketchApi?.camera)?.position.z ?? 0;
+    const activeCamera = camera ?? this.sketchApi?.camera;
+
+    this.cameraX.value = activeCamera?.position.x ?? 0;
+    this.cameraY.value = activeCamera?.position.y ?? 0;
+    this.cameraZ.value = activeCamera?.position.z ?? 0;
 
     updateUniforms(config.params, this.uniforms, p);
   }

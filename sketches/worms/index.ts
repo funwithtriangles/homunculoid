@@ -58,6 +58,8 @@ export default class Worms {
     this.particleMaterial,
   );
   root = new THREE.Group();
+  cameraX = uniform(0).setGroup(renderGroup);
+  cameraY = uniform(0).setGroup(renderGroup);
   cameraZ = uniform(0).setGroup(renderGroup);
   swimTime = uniform(0);
   sketchApi: SketchConstructorArg;
@@ -70,6 +72,8 @@ export default class Worms {
 
     const xRange = 50;
     const yRange = 100;
+    const xRangeNode = float(xRange);
+    const yRangeNode = float(yRange);
     const zRange = float(100);
     this.instancedSprite.count = instanceCount;
     this.root.add(this.instancedSprite);
@@ -78,16 +82,18 @@ export default class Worms {
 
     const startRange = hash(floatIndex.div(numWorms)).mul(zRange);
     // const baseX = hash(instanceIndex.div(wormLength)).sub(0.5).mul(xRange);
-    const baseX = hash(floatIndex.add(321).div(wormLength))
-      .sub(0.5)
-      .mul(xRange);
-    const baseY = hash(floatIndex.div(wormLength).add(422))
-      .sub(0.5)
-      .mul(yRange);
+    const baseX = hash(floatIndex.add(321).div(wormLength)).mul(xRangeNode);
+    const baseY = hash(floatIndex.div(wormLength).add(422)).mul(yRangeNode);
 
     const scale = range(0.1, 1);
 
     // Wrapped around the camera, so the worms always surround it as it travels.
+    const basePosX = this.cameraX.add(
+      baseX.sub(this.cameraX).mod(xRangeNode).sub(xRangeNode.mul(0.5)),
+    );
+    const basePosY = this.cameraY.add(
+      baseY.sub(this.cameraY).mod(yRangeNode).sub(yRangeNode.mul(0.5)),
+    );
     const basePosZ = this.cameraZ.add(
       startRange.sub(this.cameraZ).mod(zRange).sub(zRange.mul(0.5)),
     );
@@ -138,12 +144,12 @@ export default class Worms {
 
     // this.particleMaterial.positionNode = offsetRange.sub(vec3(0, 0, basePosZ));
     this.particleMaterial.positionNode = vec3(
-      baseX.add(
+      basePosX.add(
         cos(delta.add(this.swimTime).mul(this.uniforms.xSpeed)).mul(
           this.uniforms.xRad,
         ),
       ),
-      baseY
+      basePosY
         .add(
           sin(delta.add(this.swimTime).mul(this.uniforms.ySpeed)).mul(
             this.uniforms.yRad,
@@ -162,7 +168,11 @@ export default class Worms {
   }
 
   update({ params: p, deltaFrame: f, camera }: UpdateParams) {
-    this.cameraZ.value = (camera ?? this.sketchApi?.camera)?.position.z ?? 0;
+    const activeCamera = camera ?? this.sketchApi?.camera;
+
+    this.cameraX.value = activeCamera?.position.x ?? 0;
+    this.cameraY.value = activeCamera?.position.y ?? 0;
+    this.cameraZ.value = activeCamera?.position.z ?? 0;
     this.swimTime.value += p.swimSpeed * f;
 
     // this.instancedSprite.scale.set(10, 10, 10);

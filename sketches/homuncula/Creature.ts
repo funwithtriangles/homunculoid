@@ -43,6 +43,7 @@ export default class Creature {
   skeletonHelper: SkeletonHelper | null = null;
   turns: number = 0;
   waves: number = 0;
+  yPos = 0;
 
   spineBones: Bone[] = [];
   armLBones: Bone[] = [];
@@ -257,9 +258,10 @@ export default class Creature {
 
     // The head rides a helix whose angle is locked to the wave phase, so the
     // body's own lateral offset lands it on the path the head already swept.
-    const deltaTurns = params.swimTurnSpeed * params.swimSpeed * deltaTime;
+    const deltaTurns = params.swimTurnSpeed * deltaTime;
     this.turns += deltaTurns;
-    this.waves += params.swimFreq * params.swimSpeed * deltaTime;
+    this.yPos += params.swimSpeed * deltaTime;
+    this.waves += params.swimFreq * deltaTime;
     const angle = this.turns * Math.PI * 2;
 
     const follow = params.swimPathFollow;
@@ -269,7 +271,7 @@ export default class Creature {
 
     this.pathPosition.set(
       Math.cos(angle) * radius,
-      this.waves,
+      this.yPos,
       Math.sin(angle) * radius,
     );
 
@@ -310,6 +312,15 @@ export default class Creature {
 
     this.root.quaternion.copy(this.renderQuat);
     this.root.position.copy(this.renderPosition);
+  }
+
+  reset() {
+    this.yPos = 0;
+    this.turns = 0;
+    this.waves = 0;
+    this.pathPosition.set(0, 0, 0);
+    this.renderPosition.set(0, 0, 0);
+    this.renderQuat.copy(IDENTITY);
   }
 
   dispose() {
