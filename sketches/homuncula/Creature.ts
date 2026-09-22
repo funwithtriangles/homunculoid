@@ -12,6 +12,10 @@ import {
   mx_worley_noise_float,
   mx_noise_float,
   uniform,
+  positionLocal,
+  normalLocal,
+  sin,
+  attribute,
 } from "three/tsl";
 import {
   Bone,
@@ -70,7 +74,6 @@ export default class Creature {
   armRBones: Bone[] = [];
   legLBones: Bone[] = [];
   legRBones: Bone[] = [];
-  armBandL: Mesh | null = null;
   energyColor = uniform(new Color(0xffffff));
 
   bodyLength = 1;
@@ -125,38 +128,52 @@ export default class Creature {
       model.getObjectByName("Leg008R") as Bone,
     );
 
-    this.armBandL = model.getObjectByName("armBandL") as Mesh | null;
+    const armBandL = model.getObjectByName("armBandL") as Mesh | null;
+    const armBandR = model.getObjectByName("armBandR") as Mesh | null;
+    const legBandL = model.getObjectByName("legBandL") as Mesh | null;
+    const legBandR = model.getObjectByName("legBandR") as Mesh | null;
 
-    if (this.armBandL) {
-      const armBandMat = new MeshBasicNodeMaterial();
-      armBandMat.side = DoubleSide;
-      this.armBandL.material = armBandMat;
+    const energyBandMat = new MeshBasicNodeMaterial();
 
-      const fadeOffTop = uv().y.smoothstep(0.0, 0.3);
-      const fadeOffBottom = uv().y.smoothstep(0.7, 1.0).oneMinus();
+    energyBandMat.side = DoubleSide;
+    armBandL && (armBandL.material = energyBandMat);
+    armBandR && (armBandR.material = energyBandMat);
+    legBandL && (legBandL.material = energyBandMat);
+    legBandR && (legBandR.material = energyBandMat);
 
-      const grid = uv().mul(vec2(4, 3));
-      // const grid = uv().mul(mx_worley_noise_vec2());
-      const linePos = mx_noise_float(grid.y.sub(time.mul(1)));
-      // const linePos = grid.y.sub(time.mul(1));
+    const limbIndex = attribute("_limbindex", "float" as const);
 
-      const dist = abs(grid.x.sub(linePos).add(time)).mod(1);
-      const wrappedDist = min(dist, float(1).sub(dist));
+    const delta = time.add(limbIndex.mul(318));
 
-      const widthNoise = mx_noise_float(uv().y.add(time.mul(1))).remap(
-        0,
-        1,
-        0.05,
-        0.3,
-      );
+    const fadeOffTop = uv().y.smoothstep(0.0, 0.3);
+    const fadeOffBottom = uv().y.smoothstep(0.7, 1.0).oneMinus();
 
-      const lineWidth = widthNoise.mul(fadeOffTop).mul(fadeOffBottom);
+    const grid = uv().mul(vec2(4, 3));
+    // const grid = uv().mul(mx_worley_noise_vec2());
+    const linePos = mx_noise_float(grid.y.add(delta.mul(1)));
+    // const linePos = grid.y.sub(time.mul(1));
 
-      const line = step(wrappedDist, lineWidth);
-      armBandMat.transparent = true;
-      armBandMat.opacityNode = line;
-      armBandMat.colorNode = vec3(line).mul(this.energyColor);
-    }
+    const dist = abs(grid.x.sub(linePos).add(delta.mul(2))).mod(1);
+    const wrappedDist = min(dist, float(1).sub(dist));
+
+    const widthNoise = mx_noise_float(uv().y.sub(delta.mul(1))).remap(
+      0,
+      1,
+      0.05,
+      0.3,
+    );
+
+    const lineWidth = widthNoise.mul(fadeOffTop).mul(fadeOffBottom);
+
+    const line = step(wrappedDist, lineWidth);
+    energyBandMat.transparent = true;
+    energyBandMat.opacityNode = line;
+    energyBandMat.colorNode = vec3(line).mul(this.energyColor);
+
+    const displacement = normalLocal.mul(
+      sin(uv().y.add(delta.mul(0.5)).mul(10)),
+    );
+    energyBandMat.positionNode = positionLocal.add(displacement.mul(0.05));
 
     this.normalizeArcLengths([
       this.spineBones,
