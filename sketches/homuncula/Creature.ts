@@ -16,6 +16,8 @@ import {
   normalLocal,
   sin,
   attribute,
+  positionWorld,
+  vec4,
 } from "three/tsl";
 import {
   Bone,
@@ -143,32 +145,38 @@ export default class Creature {
 
     const limbIndex = attribute("_limbindex", "float" as const);
 
-    const delta = time.add(limbIndex.mul(318));
+    const delta = time.add(limbIndex.mul(318)).mul(0.5);
 
     const fadeOffTop = uv().y.smoothstep(0.0, 0.3);
     const fadeOffBottom = uv().y.smoothstep(0.7, 1.0).oneMinus();
 
-    const grid = uv().mul(vec2(4, 3));
-    // const grid = uv().mul(mx_worley_noise_vec2());
+    const grid = uv().mul(vec2(3, 4));
     const linePos = mx_noise_float(grid.y.add(delta.mul(1)));
-    // const linePos = grid.y.sub(time.mul(1));
 
-    const dist = abs(grid.x.sub(linePos).add(delta.mul(2))).mod(1);
+    const dist = abs(grid.x.sub(linePos).add(delta.mul(1))).mod(1);
     const wrappedDist = min(dist, float(1).sub(dist));
 
-    const widthNoise = mx_noise_float(uv().y.sub(delta.mul(1))).remap(
+    const widthNoiseBig = sin(uv().y.mul(10).sub(delta.mul(10))).remap(
       0,
       1,
-      0.05,
-      0.3,
+      0.1,
+      0.2,
     );
 
-    const lineWidth = widthNoise.mul(fadeOffTop).mul(fadeOffBottom);
+    const widthNoiseSmall = mx_noise_float(
+      positionLocal.mul(30).sub(delta.mul(5)),
+    ).remap(0, 1, 0.05, 0.2);
+
+    const lineWidth = widthNoiseBig
+      .add(widthNoiseSmall)
+      .mul(fadeOffTop)
+      .mul(fadeOffBottom);
 
     const line = step(wrappedDist, lineWidth);
     energyBandMat.transparent = true;
     energyBandMat.opacityNode = line;
     energyBandMat.colorNode = vec3(line).mul(this.energyColor);
+    // energyBandMat.colorNode = opacityMask;
 
     const displacement = normalLocal.mul(
       sin(uv().y.add(delta.mul(0.5)).mul(10)),
