@@ -1,10 +1,29 @@
 {
   "name": "homuncula",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
   "dependencies": {
+    "@fontsource-variable/roboto-condensed": "^5.2.8",
+    "@fontsource/chivo-mono": "^5.2.6",
+    "@hedron-gl/clock": "link:../hedron/packages/clock",
+    "@hedron-gl/engine": "link:../hedron/packages/engine",
+    "@hedron-gl/lfo-input": "link:../hedron/packages/lfo-input",
+    "@hedron-gl/timeline": "link:../hedron/packages/timeline",
+    "@hedron-gl/ui-core": "link:../hedron/packages/ui-core",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-icons": "^5.5.0",
     "three": "^0.185.1",
     "three-stdlib": "^2.36.0"
   },
   "devDependencies": {
-    "@types/three": "^0.185.1"
+    "@types/react": "^19.2.9",
+    "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.180.0",
+    "@vitejs/plugin-react": "^5.1.2",
+    "vite": "^7.1.4"
   }
 }

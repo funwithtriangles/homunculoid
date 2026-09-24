@@ -13,6 +13,8 @@ import {
 import { Scene, PerspectiveCamera, WebGPURenderer } from "three/webgpu";
 import { GLTFLoader, RGBELoader } from "three-stdlib";
 
+import { appSetters } from "../../demo/components/App";
+
 import ModuleGrid from "./ModuleGrid";
 import Creature from "./Creature";
 import hdrUrl from "./purple.hdr?url";
@@ -153,6 +155,8 @@ export default class Homuncula {
 
       this.skeletonHelper = this.creature.skeletonHelper;
       if (this.skeletonHelper) this.scene.add(this.skeletonHelper);
+
+      appSetters.setModelLoaded(true);
     });
 
     rgbeLoader.load(hdrUrl, (texture) => {

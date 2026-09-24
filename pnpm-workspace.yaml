@@ -1,0 +1,4 @@
+overrides:
+  packages: link:../hedron/packages
+  '@hedron-gl/timeline': link:../hedron/packages/timeline
+  root: link:../hedron

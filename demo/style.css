@@ -1,0 +1,18 @@
+body {
+  margin: 0;
+  background: black;
+}
+
+.playing {
+  /* cursor: none; */
+}
+
+.hidden {
+  display: none;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}

@@ -1,0 +1,131 @@
+/* Main card styles */
+.mainCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  inset: 0;
+  font-family: "Monaco", "Consolas", "Courier New", Courier, monospace;
+  font-size: 1.5rem;
+  color: white;
+  z-index: 99;
+  padding: 1rem;
+  pointer-events: none;
+}
+
+.hidden {
+  display: none;
+}
+
+.box {
+  font-size: 18px;
+  border: 1px solid white;
+  padding: 2rem;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+}
+
+@media (max-width: 600px) {
+  .box {
+    font-size: 14px;
+    padding: 1rem;
+  }
+}
+
+.title {
+  margin-top: 0;
+}
+
+.credits {
+  font-size: 0.8em;
+}
+
+.portraitWarning {
+  font-weight: bold;
+}
+
+@media (orientation: landscape) {
+  .portraitWarning {
+    display: none;
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.playButton {
+  z-index: 10;
+  padding: 10px 20px;
+  border: 2px solid white;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  text-transform: uppercase;
+  color: white;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  pointer-events: none;
+  font-family: inherit;
+}
+
+.playButton.loaded {
+  pointer-events: auto;
+}
+
+.playButton span {
+  animation: blink 0.5s infinite;
+}
+
+.playButton.loaded span {
+  animation: none;
+}
+
+.statusList {
+  display: flex;
+  margin: 0;
+  padding: 0;
+}
+
+.statusItem {
+  flex: 1;
+  font-size: 0.8em;
+  text-transform: uppercase;
+  padding: 0;
+  list-style: none;
+  margin: 0;
+  opacity: 0.5;
+  text-align: center;
+}
+
+.statusItem::after {
+  content: " -";
+}
+
+.statusItem.loaded {
+  opacity: 1;
+}
+
+.statusItem.loaded::after {
+  content: " ✓";
+}
+
+.cta {
+  margin-bottom: 0;
+  font-style: italic;
+  border-top: 1px solid white;
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+
+.cta a {
+  color: white;
+}
