@@ -48,7 +48,14 @@ function App() {
     appSetters.setModelLoaded = setModelLoaded;
     appSetters.setIsPlaying = setIsPlaying;
     appSetters.setEngineReady = () => setEngineReady(true);
+    appSetters.setButtonText = setButtonText;
   }, []);
+
+  useEffect(() => {
+    if (isLoaded) {
+      appSetters.setButtonText("Play");
+    }
+  }, [isLoaded]);
 
   const handleBodyClick = useCallback(() => {
     if (controlsOpen) {
