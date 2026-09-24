@@ -8,13 +8,14 @@ import "./variables.css";
 import "@hedron-gl/ui-core/modules.css";
 import "./style.css";
 import { getSketchModuleItems } from "./utils";
+import { TimelineInput } from "@hedron-gl/timeline";
 
 // Imported from the Hedron project save file (JSON)
 const engineData = projectData.engine as unknown as EngineData;
 
 // Because the project uses LFOs, we need a clock
 export const clock = new Clock();
-clock.bpm = 99;
+clock.bpm = 150;
 
 // Initialize the engine with the clock
 export const engine = new HedronEngine({
@@ -23,8 +24,9 @@ export const engine = new HedronEngine({
   clock,
 });
 
-// We need to add the plugin for LFOs to work
+// Register the necessary plugins for this project
 engine.registerPlugin(new LFOInput(engine));
+engine.registerPlugin(new TimelineInput());
 
 export const engineStore = engine.getStore();
 const { setSketchModuleItem, loadProject } = engineStore.getState();
@@ -40,6 +42,8 @@ sketchModules.forEach(setSketchModuleItem);
 engine.startStoreListener();
 engine.run();
 loadProject(engineData);
+
+engine.initiatePlugins();
 
 // Add the canvas to the DOM
 engine.createCanvas(document.getElementById("root") as HTMLElement);

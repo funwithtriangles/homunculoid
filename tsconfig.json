@@ -5,7 +5,8 @@
     "moduleResolution": "Bundler",
     "strict": true,
     "skipLibCheck": true,
-    "types": []
+    "types": [],
+    "jsx": "react-jsx"
   },
-  "include": ["module.d.ts", "**/*.ts"]
+  "include": ["module.d.ts", "**/*.ts", "**/*.tsx"]
 }

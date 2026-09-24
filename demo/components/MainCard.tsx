@@ -26,7 +26,7 @@ function MainCard({
     <div className={`${c.mainCard} ${isPlaying ? c.hidden : ""}`}>
       <div className={c.box}>
         <h1 className={c.title}>Polyop - Homuncula</h1>
-        <p>Presented in Berlin @ Deadline Demoparty 2025</p>
+        <p>Presented in Berlin @ Deadline Demoparty 2026</p>
         <p className={c.portraitWarning}>
           Rotate your device for the best experience
         </p>
