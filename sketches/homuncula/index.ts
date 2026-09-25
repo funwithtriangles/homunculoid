@@ -147,8 +147,8 @@ export default class Homuncula {
 
       if (modules) {
         this.moduleGrid = new ModuleGrid(modules as Group, {
-          columns: 16,
-          rows: 16,
+          columns: 32,
+          rows: 32,
         });
         this.root.add(this.moduleGrid.root);
       }
