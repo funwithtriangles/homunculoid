@@ -1,23 +1,4 @@
-import {
-  abs,
-  float,
-  min,
-  positionGeometry,
-  mx_worley_noise_vec2,
-  step,
-  time,
-  uv,
-  vec2,
-  vec3,
-  mx_noise_float,
-  uniform,
-  positionLocal,
-  normalLocal,
-  sin,
-  attribute,
-  positionWorld,
-  vec4,
-} from "three/tsl";
+import { vec3, uniform } from "three/tsl";
 import {
   Bone,
   Color,
@@ -34,6 +15,7 @@ import {
   Vector3,
 } from "three/webgpu";
 import { convertParamsToUniforms, updateUniforms } from "../../uniformsUtils";
+import { armBandEnergyShape } from "./armBandEnergyShape";
 import { homunculaUniformParams } from "./config";
 
 const IDENTITY = new Quaternion();
@@ -145,82 +127,11 @@ export default class Creature {
     legBandL && (legBandL.material = energyBandMat);
     legBandR && (legBandR.material = energyBandMat);
 
-    const limbIndex = attribute("_limbindex", "float" as const);
-
-    const armBandDelta = time
-      .add(limbIndex.mul(this.armBandUniforms.armBandLimbOffset))
-      .mul(this.armBandUniforms.armBandTimeScale);
-
-    const fadeOffTop = uv().y.smoothstep(
-      this.armBandUniforms.armBandFadeTopStart,
-      this.armBandUniforms.armBandFadeTopEnd,
-    );
-    const fadeOffBottom = uv()
-      .y.smoothstep(
-        this.armBandUniforms.armBandFadeBottomStart,
-        this.armBandUniforms.armBandFadeBottomEnd,
-      )
-      .oneMinus();
-
-    const grid = uv().mul(
-      vec2(
-        this.armBandUniforms.armBandGridX,
-        this.armBandUniforms.armBandGridY,
-      ),
-    );
-    const linePos = mx_noise_float(
-      grid.y.add(armBandDelta.mul(this.armBandUniforms.armBandLineFlow)),
-    );
-
-    const dist = abs(
-      grid.x
-        .sub(linePos)
-        .add(armBandDelta.mul(this.armBandUniforms.armBandLineFlow)),
-    ).mod(1);
-    const wrappedDist = min(dist, float(1).sub(dist));
-
-    const widthNoiseBig = sin(
-      uv()
-        .y.mul(this.armBandUniforms.armBandBigWaveFreq)
-        .sub(armBandDelta.mul(this.armBandUniforms.armBandBigWaveFlow)),
-    ).remap(
-      0,
-      1,
-      this.armBandUniforms.armBandBigWidthMin,
-      this.armBandUniforms.armBandBigWidthMax,
-    );
-
-    const widthNoiseSmall = mx_noise_float(
-      positionLocal
-        .mul(this.armBandUniforms.armBandSmallNoiseScale)
-        .sub(armBandDelta.mul(this.armBandUniforms.armBandSmallNoiseFlow)),
-    ).remap(
-      0,
-      1,
-      this.armBandUniforms.armBandSmallWidthMin,
-      this.armBandUniforms.armBandSmallWidthMax,
-    );
-
-    const lineWidth = widthNoiseBig
-      .add(widthNoiseSmall)
-      .mul(fadeOffTop)
-      .mul(fadeOffBottom);
-
-    const line = step(wrappedDist, lineWidth);
+    const { energyShape, position } = armBandEnergyShape(this.armBandUniforms);
     energyBandMat.transparent = true;
-    energyBandMat.opacityNode = line;
-    energyBandMat.colorNode = vec3(line).mul(this.energyColor);
-
-    const displacement = normalLocal.mul(
-      sin(
-        uv()
-          .y.add(armBandDelta.mul(this.armBandUniforms.armBandDisplaceFlow))
-          .mul(this.armBandUniforms.armBandDisplaceFreq),
-      ),
-    );
-    energyBandMat.positionNode = positionLocal.add(
-      displacement.mul(this.armBandUniforms.armBandDisplaceAmp),
-    );
+    energyBandMat.opacityNode = energyShape;
+    energyBandMat.colorNode = vec3(energyShape).mul(this.energyColor);
+    energyBandMat.positionNode = position;
 
     this.normalizeArcLengths([
       this.spineBones,
