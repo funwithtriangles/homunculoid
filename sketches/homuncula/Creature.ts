@@ -9,7 +9,6 @@ import {
   uv,
   vec2,
   vec3,
-  mx_worley_noise_float,
   mx_noise_float,
   uniform,
   positionLocal,
@@ -34,6 +33,8 @@ import {
   SkinnedMesh,
   Vector3,
 } from "three/webgpu";
+import { convertParamsToUniforms, updateUniforms } from "../../uniformsUtils";
+import { homunculaUniformParams } from "./config";
 
 const IDENTITY = new Quaternion();
 const UP = new Vector3(0, 1, 0);
@@ -77,6 +78,7 @@ export default class Creature {
   legLBones: Bone[] = [];
   legRBones: Bone[] = [];
   energyColor = uniform(new Color(0xffffff));
+  armBandUniforms = convertParamsToUniforms(homunculaUniformParams);
 
   bodyLength = 1;
   swim = {
@@ -145,27 +147,59 @@ export default class Creature {
 
     const limbIndex = attribute("_limbindex", "float" as const);
 
-    const delta = time.add(limbIndex.mul(318)).mul(0.5);
+    const armBandDelta = time
+      .add(limbIndex.mul(this.armBandUniforms.armBandLimbOffset))
+      .mul(this.armBandUniforms.armBandTimeScale);
 
-    const fadeOffTop = uv().y.smoothstep(0.0, 0.3);
-    const fadeOffBottom = uv().y.smoothstep(0.7, 1.0).oneMinus();
+    const fadeOffTop = uv().y.smoothstep(
+      this.armBandUniforms.armBandFadeTopStart,
+      this.armBandUniforms.armBandFadeTopEnd,
+    );
+    const fadeOffBottom = uv()
+      .y.smoothstep(
+        this.armBandUniforms.armBandFadeBottomStart,
+        this.armBandUniforms.armBandFadeBottomEnd,
+      )
+      .oneMinus();
 
-    const grid = uv().mul(vec2(3, 4));
-    const linePos = mx_noise_float(grid.y.add(delta.mul(1)));
+    const grid = uv().mul(
+      vec2(
+        this.armBandUniforms.armBandGridX,
+        this.armBandUniforms.armBandGridY,
+      ),
+    );
+    const linePos = mx_noise_float(
+      grid.y.add(armBandDelta.mul(this.armBandUniforms.armBandLineFlow)),
+    );
 
-    const dist = abs(grid.x.sub(linePos).add(delta.mul(1))).mod(1);
+    const dist = abs(
+      grid.x
+        .sub(linePos)
+        .add(armBandDelta.mul(this.armBandUniforms.armBandLineFlow)),
+    ).mod(1);
     const wrappedDist = min(dist, float(1).sub(dist));
 
-    const widthNoiseBig = sin(uv().y.mul(10).sub(delta.mul(10))).remap(
+    const widthNoiseBig = sin(
+      uv()
+        .y.mul(this.armBandUniforms.armBandBigWaveFreq)
+        .sub(armBandDelta.mul(this.armBandUniforms.armBandBigWaveFlow)),
+    ).remap(
       0,
       1,
-      0.1,
-      0.2,
+      this.armBandUniforms.armBandBigWidthMin,
+      this.armBandUniforms.armBandBigWidthMax,
     );
 
     const widthNoiseSmall = mx_noise_float(
-      positionLocal.mul(30).sub(delta.mul(5)),
-    ).remap(0, 1, 0.05, 0.2);
+      positionLocal
+        .mul(this.armBandUniforms.armBandSmallNoiseScale)
+        .sub(armBandDelta.mul(this.armBandUniforms.armBandSmallNoiseFlow)),
+    ).remap(
+      0,
+      1,
+      this.armBandUniforms.armBandSmallWidthMin,
+      this.armBandUniforms.armBandSmallWidthMax,
+    );
 
     const lineWidth = widthNoiseBig
       .add(widthNoiseSmall)
@@ -176,12 +210,17 @@ export default class Creature {
     energyBandMat.transparent = true;
     energyBandMat.opacityNode = line;
     energyBandMat.colorNode = vec3(line).mul(this.energyColor);
-    // energyBandMat.colorNode = opacityMask;
 
     const displacement = normalLocal.mul(
-      sin(uv().y.add(delta.mul(0.5)).mul(10)),
+      sin(
+        uv()
+          .y.add(armBandDelta.mul(this.armBandUniforms.armBandDisplaceFlow))
+          .mul(this.armBandUniforms.armBandDisplaceFreq),
+      ),
     );
-    energyBandMat.positionNode = positionLocal.add(displacement.mul(0.05));
+    energyBandMat.positionNode = positionLocal.add(
+      displacement.mul(this.armBandUniforms.armBandDisplaceAmp),
+    );
 
     this.normalizeArcLengths([
       this.spineBones,
@@ -319,6 +358,8 @@ export default class Creature {
 
   update({ params, deltaTime }: { params: CreatureParams; deltaTime: number }) {
     if (!this.spineBones.length) return;
+
+    updateUniforms(homunculaUniformParams, this.armBandUniforms, params);
 
     this.swim.amplitude = params.swimAmp;
     this.swim.frequency = params.swimFreq;
