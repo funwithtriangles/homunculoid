@@ -39,6 +39,11 @@ export interface CreatureParams {
   swimPathRoll: number;
   swimSpeed: number;
   pipeSparkColor: [number, number, number];
+  armBandMasterSpeed: number;
+  armBandOrbitSpeed: number;
+  armBandBigNoiseSpeed: number;
+  armBandSmallNoiseSpeed: number;
+  armBandDisplaceSpeed: number;
 }
 
 /**
@@ -61,6 +66,18 @@ export default class Creature {
   legRBones: Bone[] = [];
   energyColor = uniform(new Color(0xffffff));
   armBandUniforms = convertParamsToUniforms(homunculaUniformParams);
+  armBandDeltas = {
+    shapeRotation: uniform(0),
+    bigNoise: uniform(0),
+    smallNoise: uniform(0),
+    displacement: uniform(0),
+  };
+  armBandPhase = {
+    shapeRotation: 0,
+    bigNoise: 0,
+    smallNoise: 0,
+    displacement: 0,
+  };
 
   bodyLength = 1;
   swim = {
@@ -127,7 +144,10 @@ export default class Creature {
     legBandL && (legBandL.material = energyBandMat);
     legBandR && (legBandR.material = energyBandMat);
 
-    const { energyShape, position } = armBandEnergyShape(this.armBandUniforms);
+    const { energyShape, position } = armBandEnergyShape(
+      this.armBandUniforms,
+      this.armBandDeltas,
+    );
     energyBandMat.transparent = true;
     energyBandMat.opacityNode = energyShape;
     energyBandMat.colorNode = vec3(energyShape).mul(this.energyColor);
@@ -271,6 +291,7 @@ export default class Creature {
     if (!this.spineBones.length) return;
 
     updateUniforms(homunculaUniformParams, this.armBandUniforms, params);
+    this.updateArmBandDeltas(params, deltaTime);
 
     this.swim.amplitude = params.swimAmp;
     this.swim.frequency = params.swimFreq;
@@ -348,10 +369,32 @@ export default class Creature {
     this.root.position.copy(this.renderPosition);
   }
 
+  updateArmBandDeltas(params: CreatureParams, deltaTime: number) {
+    const advance = deltaTime * params.armBandMasterSpeed;
+
+    this.armBandPhase.shapeRotation += params.armBandOrbitSpeed * advance;
+    this.armBandPhase.bigNoise += params.armBandBigNoiseSpeed * advance;
+    this.armBandPhase.smallNoise += params.armBandSmallNoiseSpeed * advance;
+    this.armBandPhase.displacement += params.armBandDisplaceSpeed * advance;
+
+    this.armBandDeltas.shapeRotation.value = this.armBandPhase.shapeRotation;
+    this.armBandDeltas.bigNoise.value = this.armBandPhase.bigNoise;
+    this.armBandDeltas.smallNoise.value = this.armBandPhase.smallNoise;
+    this.armBandDeltas.displacement.value = this.armBandPhase.displacement;
+  }
+
   reset() {
     this.yPos = 0;
     this.turns = 0;
     this.waves = 0;
+    this.armBandPhase.shapeRotation = 0;
+    this.armBandPhase.bigNoise = 0;
+    this.armBandPhase.smallNoise = 0;
+    this.armBandPhase.displacement = 0;
+    this.armBandDeltas.shapeRotation.value = 0;
+    this.armBandDeltas.bigNoise.value = 0;
+    this.armBandDeltas.smallNoise.value = 0;
+    this.armBandDeltas.displacement.value = 0;
     this.pathPosition.set(0, 0, 0);
     this.renderPosition.set(0, 0, 0);
     this.renderQuat.copy(IDENTITY);

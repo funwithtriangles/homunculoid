@@ -1,12 +1,5 @@
 export const homunculaUniformParams = [
   {
-    key: "armBandTimeScale",
-    defaultValue: 0.5,
-    sliderMin: 0,
-    sliderMax: 4,
-    step: 0.01,
-  },
-  {
     key: "armBandLimbOffset",
     defaultValue: 318,
     sliderMin: 0,
@@ -55,9 +48,9 @@ export const homunculaUniformParams = [
     step: 0.01,
   },
   {
-    key: "armBandLineFlow",
+    key: "armBandMasterLineWidth",
     defaultValue: 1,
-    sliderMin: -4,
+    sliderMin: 0,
     sliderMax: 4,
     step: 0.01,
   },
@@ -65,13 +58,6 @@ export const homunculaUniformParams = [
     key: "armBandBigWaveFreq",
     defaultValue: 10,
     sliderMin: 0,
-    sliderMax: 40,
-    step: 0.1,
-  },
-  {
-    key: "armBandBigWaveFlow",
-    defaultValue: 10,
-    sliderMin: -40,
     sliderMax: 40,
     step: 0.1,
   },
@@ -97,13 +83,6 @@ export const homunculaUniformParams = [
     step: 0.1,
   },
   {
-    key: "armBandSmallNoiseFlow",
-    defaultValue: 5,
-    sliderMin: -40,
-    sliderMax: 40,
-    step: 0.1,
-  },
-  {
     key: "armBandSmallWidthMin",
     defaultValue: 0.05,
     sliderMin: 0,
@@ -125,18 +104,49 @@ export const homunculaUniformParams = [
     step: 0.1,
   },
   {
-    key: "armBandDisplaceFlow",
+    key: "armBandDisplaceAmp",
+    defaultValue: 0.05,
+    sliderMin: 0,
+    sliderMax: 0.3,
+    step: 0.001,
+  },
+];
+
+export const homunculaArmBandSpeedParams = [
+  {
+    key: "armBandMasterSpeed",
+    defaultValue: 1,
+    sliderMin: -4,
+    sliderMax: 4,
+    step: 0.01,
+  },
+  {
+    key: "armBandOrbitSpeed",
     defaultValue: 0.5,
     sliderMin: -10,
     sliderMax: 10,
     step: 0.01,
   },
   {
-    key: "armBandDisplaceAmp",
-    defaultValue: 0.05,
-    sliderMin: 0,
-    sliderMax: 0.3,
-    step: 0.001,
+    key: "armBandBigNoiseSpeed",
+    defaultValue: 5,
+    sliderMin: -40,
+    sliderMax: 40,
+    step: 0.1,
+  },
+  {
+    key: "armBandSmallNoiseSpeed",
+    defaultValue: 2.5,
+    sliderMin: -40,
+    sliderMax: 40,
+    step: 0.1,
+  },
+  {
+    key: "armBandDisplaceSpeed",
+    defaultValue: 0.25,
+    sliderMin: -10,
+    sliderMax: 10,
+    step: 0.01,
   },
 ];
 
@@ -295,7 +305,7 @@ export default {
     },
     {
       groupTitle: "Armbands",
-      params: [...homunculaUniformParams],
+      params: [...homunculaUniformParams, ...homunculaArmBandSpeedParams],
     },
   ],
   shots: [

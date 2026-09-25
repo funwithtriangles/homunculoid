@@ -8,17 +8,17 @@ import {
   positionLocal,
   sin,
   step,
-  time,
   uv,
   vec2,
 } from "three/tsl";
 
-export function armBandEnergyShape(armBandUniforms: Record<string, any>) {
+export function armBandEnergyShape(
+  armBandUniforms: Record<string, any>,
+  armBandDeltas: Record<string, any>,
+) {
   const limbIndex = attribute("_limbindex", "float" as const);
-
-  const armBandDelta = time
-    .add(limbIndex.mul(armBandUniforms.armBandLimbOffset))
-    .mul(armBandUniforms.armBandTimeScale);
+  const limbOffset = limbIndex.mul(armBandUniforms.armBandLimbOffset);
+  const shapeDelta = armBandDeltas.shapeRotation.add(limbOffset);
 
   const fadeOffTop = uv().y.smoothstep(
     armBandUniforms.armBandFadeTopStart,
@@ -31,22 +31,18 @@ export function armBandEnergyShape(armBandUniforms: Record<string, any>) {
     )
     .oneMinus();
 
-  const grid = uv().mul(
+  const shapeGrid = uv().mul(
     vec2(armBandUniforms.armBandGridX, armBandUniforms.armBandGridY),
   );
-  const linePos = mx_noise_float(
-    grid.y.add(armBandDelta.mul(armBandUniforms.armBandLineFlow)),
-  );
+  const linePos = mx_noise_float(shapeGrid.y.add(shapeDelta));
 
-  const dist = abs(
-    grid.x.sub(linePos).add(armBandDelta.mul(armBandUniforms.armBandLineFlow)),
-  ).mod(1);
+  const dist = abs(shapeGrid.x.sub(linePos).add(shapeDelta)).mod(1);
   const wrappedDist = min(dist, float(1).sub(dist));
 
   const widthNoiseBig = sin(
     uv()
       .y.mul(armBandUniforms.armBandBigWaveFreq)
-      .sub(armBandDelta.mul(armBandUniforms.armBandBigWaveFlow)),
+      .sub(armBandDeltas.bigNoise.add(limbOffset)),
   ).remap(
     0,
     1,
@@ -57,7 +53,7 @@ export function armBandEnergyShape(armBandUniforms: Record<string, any>) {
   const widthNoiseSmall = mx_noise_float(
     positionLocal
       .mul(armBandUniforms.armBandSmallNoiseScale)
-      .sub(armBandDelta.mul(armBandUniforms.armBandSmallNoiseFlow)),
+      .sub(armBandDeltas.smallNoise.add(limbOffset)),
   ).remap(
     0,
     1,
@@ -68,13 +64,14 @@ export function armBandEnergyShape(armBandUniforms: Record<string, any>) {
   const lineWidth = widthNoiseBig
     .add(widthNoiseSmall)
     .mul(fadeOffTop)
-    .mul(fadeOffBottom);
+    .mul(fadeOffBottom)
+    .mul(armBandUniforms.armBandMasterLineWidth);
 
   const energyShape = step(wrappedDist, lineWidth);
   const displacement = normalLocal.mul(
     sin(
       uv()
-        .y.add(armBandDelta.mul(armBandUniforms.armBandDisplaceFlow))
+        .y.add(armBandDeltas.displacement.add(limbOffset))
         .mul(armBandUniforms.armBandDisplaceFreq),
     ),
   );
