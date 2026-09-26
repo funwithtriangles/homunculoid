@@ -6,8 +6,7 @@ import { uniform } from "three/tsl";
 
 export default class ChromaticAberration {
   uniforms = convertParamsToUniforms(chromaticAberrationParamsConfig);
-  scanlines_resolutionY = uniform(1080);
-
+  virtualResolutionY = uniform(1080);
   getWebGPUPass(prevPass: Node): Node {
     let p = prevPass;
     p = chromaticAberration(
@@ -17,13 +16,15 @@ export default class ChromaticAberration {
       this.uniforms.falloff,
       this.uniforms.redOffset,
       this.uniforms.blueOffset,
-      this.scanlines_resolutionY,
+      this.virtualResolutionY,
     );
     return p;
   }
 
   update({ params, scene }) {
-    this.scanlines_resolutionY = scene.renderer.domElement.height || 1080;
+    const pxRatio = scene.renderer.getPixelRatio();
+    this.virtualResolutionY.value =
+      scene.renderer.domElement.height / pxRatio || 1080;
     updateUniforms(chromaticAberrationParamsConfig, this.uniforms, params);
   }
 }

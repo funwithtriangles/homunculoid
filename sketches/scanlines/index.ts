@@ -2,10 +2,11 @@ import { Node, WebGPURenderer } from "three/webgpu";
 import { scanlines } from "./scanlines";
 import { convertParamsToUniforms, updateUniforms } from "../../uniformsUtils";
 import { scanlinesParams } from "./config";
+import { uniform } from "three/tsl";
 
 export default class Scanlines {
   uniforms = convertParamsToUniforms(scanlinesParams);
-  scanlines_resolutionY = this.uniforms.scanlines_resolutionY || 1080;
+  virtualResolutionY = uniform(1080);
   renderer: WebGPURenderer;
 
   constructor({ renderer }: { renderer: WebGPURenderer }) {
@@ -21,13 +22,21 @@ export default class Scanlines {
       this.uniforms.speed,
       this.uniforms.flicker,
       this.uniforms.vignette,
-      this.scanlines_resolutionY,
+      this.virtualResolutionY,
     );
     return p;
   }
 
-  update({ params, scene }) {
-    this.scanlines_resolutionY = scene.renderer.domElement.height || 1080;
+  update({
+    params,
+    scene,
+  }: {
+    params: any;
+    scene: { renderer: WebGPURenderer };
+  }) {
+    const pxRatio = scene.renderer.getPixelRatio();
+    this.virtualResolutionY.value =
+      scene.renderer.domElement.height / pxRatio || 1080;
     updateUniforms(scanlinesParams, this.uniforms, params);
   }
 }

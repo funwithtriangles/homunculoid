@@ -23,7 +23,7 @@ export const scanlines = (
   resolutionY: Node,
 ): ShaderNodeObject<Node> =>
   Fn(() => {
-    const densityScale = div(resolutionY, float(1080));
+    const densityScale = div(resolutionY, 1080);
     const normalizedDensity = mul(density, densityScale);
     const scanlineWave = sin(
       screenUV.y.mul(normalizedDensity).add(time.mul(speed)),
