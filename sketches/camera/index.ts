@@ -26,6 +26,8 @@ const easeOutSine = (x: number): number => {
 export default class Camera {
   root: THREE.Group;
   lookAtPos: THREE.Vector3;
+  yPos = 0;
+  orbitRad = 0;
   targetLookAtPos = new THREE.Vector3();
   orbitDelta = 0;
   latchDelta = 0;
@@ -158,27 +160,32 @@ export default class Camera {
     }
 
     if (this.isFirstFrame) {
+      this.orbitRad = p.orbitRad;
       this.trackedPosition.copy(this.targetTrackedPosition);
     } else {
+      this.orbitRad = lerp(this.orbitRad, p.orbitRad, 1 - Math.exp(-1 * f));
+
       this.trackedPosition.lerp(
         this.targetTrackedPosition,
         1 - Math.exp(-1 * f),
       );
     }
 
-    const circX = Math.sin(this.orbitDelta) * p.orbitRad * p.bigOrbitRad;
-    const circZ = Math.cos(this.orbitDelta) * p.orbitRad * p.bigOrbitRad;
+    const circX = Math.sin(this.orbitDelta) * this.orbitRad * p.bigOrbitRad;
+    const circZ = Math.cos(this.orbitDelta) * this.orbitRad * p.bigOrbitRad;
     this.trackedCameraPosition.set(
       this.trackedPosition.x + circX,
-      this.trackedPosition.y + p.camY,
+      this.trackedPosition.y + this.yPos,
       this.trackedPosition.z + circZ,
     );
     this.sketchApi.camera.position.copy(this.trackedCameraPosition);
 
     if (this.isFirstFrame) {
       this.lookAtPos.copy(this.targetLookAtPos);
+      this.yPos = p.camY;
     } else {
       this.lookAtPos.lerp(this.targetLookAtPos, 1 - Math.exp(-1 * f));
+      this.yPos = lerp(this.yPos, p.camY, 1 - Math.exp(-1 * f));
     }
 
     this.sketchApi.camera.lookAt(this.lookAtPos);
@@ -198,6 +205,10 @@ export default class Camera {
 
   dispose() {
     this.resetTrackedObject();
+  }
+
+  resetRot() {
+    this.orbitDelta = 0;
   }
 
   resetTrackedObject() {

@@ -34,13 +34,14 @@ import {
   mx_noise_float,
   vec2,
 } from "three/tsl";
+import { PARTNER_COUNT } from "./config";
 
 const gltfLoader = new GLTFLoader();
 const rgbeLoader = new RGBELoader();
 
-/** Half a revolution, so the partner rides the far side of the circle. */
-const PARTNER_TURN_OFFSET = 0.5;
 const PARTNER_SPAWN_DROP = 20;
+/** Rate a partner closes on its share of the circle, per second. */
+const TURN_OFFSET_SMOOTHING = 1;
 
 const isMesh = (object: any): object is Mesh => object.isMesh;
 
@@ -49,7 +50,7 @@ export default class Homuncula {
   model: Group | null = null;
   moduleGrid: ModuleGrid | null = null;
   creature: Creature | null = null;
-  partnerCreature: Creature | null = null;
+  partners: Creature[] = [];
   pipeMat = new MeshStandardNodeMaterial();
   bgColor = new Color(0, 0, 1);
   // Render group so the value is uploaded once per render, not per render object.
@@ -60,7 +61,7 @@ export default class Homuncula {
   pLight = new PointLight(0xffffff, 1);
   creatureAnchor = new Group();
   isCreatureVisible = false;
-  isPartnerCreatureVisible = false;
+  partnersVisible = new Array(PARTNER_COUNT).fill(false) as boolean[];
   scene: Scene;
   camera: PerspectiveCamera;
   skeletonHelper: SkeletonHelper | null = null;
@@ -149,19 +150,23 @@ export default class Homuncula {
 
       // Cloned before Creature writes Vector3/Quaternion into bone userData,
       // which Object3D.copy would flatten to plain objects.
-      const partnerModel = SkeletonUtils.clone(this.model);
+      const partnerModels = Array.from({ length: PARTNER_COUNT }, () =>
+        SkeletonUtils.clone(this.model!),
+      );
 
       this.creature = new Creature(this.model, { debugSkeleton: false });
       this.creatureAnchor.add(this.creature.root);
 
       this.creature.root.name = "creatureRoot";
 
-      this.partnerCreature = new Creature(partnerModel, {
-        shared: this.creature,
+      this.partners = partnerModels.map((partnerModel, index) => {
+        const partner = new Creature(partnerModel, { shared: this.creature! });
+        partner.root.name = `partner${index}`;
+        partner.root.visible = this.partnersVisible[index];
+        partner.turnOffset = (index + 1) / (PARTNER_COUNT + 1);
+        this.creatureAnchor.add(partner.root);
+        return partner;
       });
-      this.partnerCreature.turnOffset = PARTNER_TURN_OFFSET;
-      this.partnerCreature.root.visible = this.isPartnerCreatureVisible;
-      this.creatureAnchor.add(this.partnerCreature.root);
 
       this.root.add(this.creatureAnchor);
 
@@ -220,20 +225,12 @@ export default class Homuncula {
       );
     }
 
-    if (params.partnerCreatureVisible !== this.isPartnerCreatureVisible) {
-      this.isPartnerCreatureVisible = params.partnerCreatureVisible;
-      if (this.partnerCreature) {
-        this.partnerCreature.root.visible = this.isPartnerCreatureVisible;
-        if (this.isPartnerCreatureVisible) {
-          this.partnerCreature.spawnBelow(PARTNER_SPAWN_DROP);
-        }
-      }
-    }
+    this.updatePartners(params, deltaTime);
 
     this.pLight.distance = 0;
     this.pLight.power = params.pLightIntensity;
     this.pLight.color.set(...params.pLightColor);
-    this.pLight.decay = 2;
+    this.pLight.decay = 1;
 
     this.pLight.position.copy(this.camera.position);
     this.pLight.position.z = this.camera.position.z - 3;
@@ -241,15 +238,44 @@ export default class Homuncula {
     this.pLight.shadow.needsUpdate = true;
 
     this.creature?.update({ params, deltaTime });
-    // Kept ticking while hidden so its path phase stays locked to the main one.
-    this.partnerCreature?.update({ params, deltaTime });
+    // Kept ticking while hidden so their path phase stays locked to the main one.
+    this.partners.forEach((partner) => partner.update({ params, deltaTime }));
     this.moduleGrid?.update(this.camera.position);
+  }
+
+  /**
+   * Visible creatures share the circle evenly, so a partner joining or leaving
+   * eases the others from halves to thirds and back.
+   */
+  updatePartners(params: any, deltaTime: number) {
+    const appeared = this.partners.map((partner, index) => {
+      const visible = !!params[`partner${index}Visible`];
+      if (visible === this.partnersVisible[index]) return false;
+
+      this.partnersVisible[index] = visible;
+      partner.root.visible = visible;
+      if (visible) partner.spawnBelow(PARTNER_SPAWN_DROP);
+      return visible;
+    });
+
+    const slots = this.partnersVisible.filter(Boolean).length + 1;
+    const ease = 1 - Math.exp(-TURN_OFFSET_SMOOTHING * deltaTime);
+    let slot = 0;
+
+    this.partners.forEach((partner, index) => {
+      if (!this.partnersVisible[index]) return;
+
+      slot += 1;
+      const target = slot / slots;
+      partner.turnOffset +=
+        (target - partner.turnOffset) * (appeared[index] ? 1 : ease);
+    });
   }
 
   creatureReset() {
     console.log("Resetting creature");
     this.creature?.reset();
-    this.partnerCreature?.reset();
+    this.partners.forEach((partner) => partner.reset());
   }
 
   dispose() {
@@ -258,6 +284,6 @@ export default class Homuncula {
       this.skeletonHelper = null;
     }
     this.creature?.dispose();
-    this.partnerCreature?.dispose();
+    this.partners.forEach((partner) => partner.dispose());
   }
 }

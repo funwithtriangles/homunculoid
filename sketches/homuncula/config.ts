@@ -1,3 +1,5 @@
+export const PARTNER_COUNT = 3;
+
 export const homunculaUniformParams = [
   {
     key: "armBandLimbOffset",
@@ -219,11 +221,11 @@ export default {
           valueType: "boolean",
           defaultValue: false,
         },
-        {
-          key: "partnerCreatureVisible",
+        ...Array.from({ length: PARTNER_COUNT }, (_, i) => ({
+          key: `partner${i}Visible`,
           valueType: "boolean",
           defaultValue: false,
-        },
+        })),
         {
           key: "swimSpeed",
           defaultValue: 0,

@@ -156,5 +156,8 @@ export default {
     {
       key: "resetTrackedObject",
     },
+    {
+      key: "resetRot",
+    },
   ],
 };
