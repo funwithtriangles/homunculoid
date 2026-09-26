@@ -11,7 +11,7 @@ import {
   SkeletonHelper,
 } from "three/webgpu";
 import { Scene, PerspectiveCamera, WebGPURenderer } from "three/webgpu";
-import { GLTFLoader, RGBELoader } from "three-stdlib";
+import { GLTFLoader, RGBELoader, SkeletonUtils } from "three-stdlib";
 
 import { appSetters } from "../../demo/components/App";
 
@@ -38,6 +38,10 @@ import {
 const gltfLoader = new GLTFLoader();
 const rgbeLoader = new RGBELoader();
 
+/** Half a revolution, so the partner rides the far side of the circle. */
+const PARTNER_TURN_OFFSET = 0.5;
+const PARTNER_SPAWN_DROP = 20;
+
 const isMesh = (object: any): object is Mesh => object.isMesh;
 
 export default class Homuncula {
@@ -45,6 +49,7 @@ export default class Homuncula {
   model: Group | null = null;
   moduleGrid: ModuleGrid | null = null;
   creature: Creature | null = null;
+  partnerCreature: Creature | null = null;
   pipeMat = new MeshStandardNodeMaterial();
   bgColor = new Color(0, 0, 1);
   // Render group so the value is uploaded once per render, not per render object.
@@ -55,6 +60,7 @@ export default class Homuncula {
   pLight = new PointLight(0xffffff, 1);
   creatureAnchor = new Group();
   isCreatureVisible = false;
+  isPartnerCreatureVisible = false;
   scene: Scene;
   camera: PerspectiveCamera;
   skeletonHelper: SkeletonHelper | null = null;
@@ -141,8 +147,22 @@ export default class Homuncula {
         console.warn("Could not find group named 'modules' in GLB.");
       }
 
+      // Cloned before Creature writes Vector3/Quaternion into bone userData,
+      // which Object3D.copy would flatten to plain objects.
+      const partnerModel = SkeletonUtils.clone(this.model);
+
       this.creature = new Creature(this.model, { debugSkeleton: false });
       this.creatureAnchor.add(this.creature.root);
+
+      this.creature.root.name = "creatureRoot";
+
+      this.partnerCreature = new Creature(partnerModel, {
+        shared: this.creature,
+      });
+      this.partnerCreature.turnOffset = PARTNER_TURN_OFFSET;
+      this.partnerCreature.root.visible = this.isPartnerCreatureVisible;
+      this.creatureAnchor.add(this.partnerCreature.root);
+
       this.root.add(this.creatureAnchor);
 
       if (modules) {
@@ -200,6 +220,16 @@ export default class Homuncula {
       );
     }
 
+    if (params.partnerCreatureVisible !== this.isPartnerCreatureVisible) {
+      this.isPartnerCreatureVisible = params.partnerCreatureVisible;
+      if (this.partnerCreature) {
+        this.partnerCreature.root.visible = this.isPartnerCreatureVisible;
+        if (this.isPartnerCreatureVisible) {
+          this.partnerCreature.spawnBelow(PARTNER_SPAWN_DROP);
+        }
+      }
+    }
+
     this.pLight.distance = 0;
     this.pLight.power = params.pLightIntensity;
     this.pLight.color.set(...params.pLightColor);
@@ -211,12 +241,15 @@ export default class Homuncula {
     this.pLight.shadow.needsUpdate = true;
 
     this.creature?.update({ params, deltaTime });
+    // Kept ticking while hidden so its path phase stays locked to the main one.
+    this.partnerCreature?.update({ params, deltaTime });
     this.moduleGrid?.update(this.camera.position);
   }
 
   creatureReset() {
     console.log("Resetting creature");
     this.creature?.reset();
+    this.partnerCreature?.reset();
   }
 
   dispose() {
@@ -225,5 +258,6 @@ export default class Homuncula {
       this.skeletonHelper = null;
     }
     this.creature?.dispose();
+    this.partnerCreature?.dispose();
   }
 }

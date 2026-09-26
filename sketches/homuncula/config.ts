@@ -220,6 +220,11 @@ export default {
           defaultValue: false,
         },
         {
+          key: "partnerCreatureVisible",
+          valueType: "boolean",
+          defaultValue: false,
+        },
+        {
           key: "swimSpeed",
           defaultValue: 0,
           sliderMin: 0,
@@ -237,12 +242,7 @@ export default {
           sliderMin: 0,
           sliderMax: 3,
         },
-        {
-          key: "swimTurnSpeed",
-          defaultValue: 0.6,
-          sliderMin: 0,
-          sliderMax: 3,
-        },
+
         {
           key: "swimWaveLength",
           defaultValue: 0.8,
@@ -278,6 +278,12 @@ export default {
     {
       groupTitle: "Path",
       params: [
+        {
+          key: "swimTurnSpeed",
+          defaultValue: 0.6,
+          sliderMin: 0,
+          sliderMax: 3,
+        },
         {
           key: "swimPathRadius",
           defaultValue: 1,

@@ -65,6 +65,7 @@ export default class Creature {
   legLBones: Bone[] = [];
   legRBones: Bone[] = [];
   energyColor = uniform(new Color(0xffffff));
+  energyBandMat!: MeshBasicNodeMaterial;
   armBandUniforms = convertParamsToUniforms(homunculaUniformParams);
   armBandDeltas = {
     shapeRotation: uniform(0),
@@ -78,6 +79,12 @@ export default class Creature {
     smallNoise: 0,
     displacement: 0,
   };
+
+  /** Whole-revolution offset on the shared path, in turns. */
+  turnOffset = 0;
+  /** Set by `spawnBelow`; consumed on the next update. */
+  private spawnDrop: number | null = null;
+  private shared: Creature | null = null;
 
   bodyLength = 1;
   swim = {
@@ -102,11 +109,19 @@ export default class Creature {
   private pathPosition = new Vector3();
   private renderPosition = new Vector3();
   private pathQuat = new Quaternion();
+  private animRoot = new Group();
 
-  constructor(model: Object3D, { debugSkeleton = false } = {}) {
+  constructor(
+    model: Object3D,
+    {
+      debugSkeleton = false,
+      shared,
+    }: { debugSkeleton?: boolean; shared?: Creature } = {},
+  ) {
+    this.root.add(this.animRoot);
+    this.shared = shared ?? null;
     this.model = model;
-    this.root.add(model);
-    this.root.name = "creatureRoot";
+    this.animRoot.add(model);
 
     this.bodyMesh = model.getObjectByName("body") as SkinnedMesh | null;
 
@@ -136,22 +151,34 @@ export default class Creature {
     const legBandL = model.getObjectByName("legBandL") as Mesh | null;
     const legBandR = model.getObjectByName("legBandR") as Mesh | null;
 
-    const energyBandMat = new MeshBasicNodeMaterial();
+    if (shared) {
+      // Sharing the uniform objects too, so both creatures read one animation.
+      this.energyColor = shared.energyColor;
+      this.armBandUniforms = shared.armBandUniforms;
+      this.armBandDeltas = shared.armBandDeltas;
+      this.armBandPhase = shared.armBandPhase;
+      this.energyBandMat = shared.energyBandMat;
+    } else {
+      const energyBandMat = new MeshBasicNodeMaterial();
+      energyBandMat.side = DoubleSide;
 
-    energyBandMat.side = DoubleSide;
+      const { energyShape, position } = armBandEnergyShape(
+        this.armBandUniforms,
+        this.armBandDeltas,
+      );
+      energyBandMat.transparent = true;
+      energyBandMat.opacityNode = energyShape;
+      energyBandMat.colorNode = vec3(energyShape).mul(this.energyColor);
+      energyBandMat.positionNode = position;
+
+      this.energyBandMat = energyBandMat;
+    }
+
+    const energyBandMat = this.energyBandMat;
     armBandL && (armBandL.material = energyBandMat);
     armBandR && (armBandR.material = energyBandMat);
     legBandL && (legBandL.material = energyBandMat);
     legBandR && (legBandR.material = energyBandMat);
-
-    const { energyShape, position } = armBandEnergyShape(
-      this.armBandUniforms,
-      this.armBandDeltas,
-    );
-    energyBandMat.transparent = true;
-    energyBandMat.opacityNode = energyShape;
-    energyBandMat.colorNode = vec3(energyShape).mul(this.energyColor);
-    energyBandMat.positionNode = position;
 
     this.normalizeArcLengths([
       this.spineBones,
@@ -290,16 +317,18 @@ export default class Creature {
   update({ params, deltaTime }: { params: CreatureParams; deltaTime: number }) {
     if (!this.spineBones.length) return;
 
-    updateUniforms(homunculaUniformParams, this.armBandUniforms, params);
-    this.updateArmBandDeltas(params, deltaTime);
+    // Shared band state is driven once, by the creature that owns it.
+    if (!this.shared) {
+      updateUniforms(homunculaUniformParams, this.armBandUniforms, params);
+      this.updateArmBandDeltas(params, deltaTime);
+      this.energyColor.value.set(...params.pipeSparkColor);
+    }
 
     this.swim.amplitude = params.swimAmp;
     this.swim.frequency = params.swimFreq;
     this.swim.waveLength = params.swimWaveLength;
     this.swim.stiffness = params.swimStiffness;
     this.swim.twist = params.swimTwist;
-
-    this.energyColor.value.set(...params.pipeSparkColor);
 
     // Spine and legs are one continuous body; legs read as a forked tail.
     this.applySwimWave(this.spineBones);
@@ -317,7 +346,7 @@ export default class Creature {
     this.turns += deltaTurns;
     this.yPos += params.swimSpeed * deltaTime;
     this.waves += params.swimFreq * deltaTime;
-    const angle = this.turns * Math.PI * 2;
+    const angle = (this.turns + this.turnOffset) * Math.PI * 2;
 
     const follow = params.swimPathFollow;
 
@@ -326,7 +355,7 @@ export default class Creature {
 
     this.pathPosition.set(
       Math.cos(angle) * radius,
-      this.yPos,
+      0,
       Math.sin(angle) * radius,
     );
 
@@ -360,13 +389,26 @@ export default class Creature {
       this.pathQuat.copy(IDENTITY);
     }
 
+    if (this.spawnDrop !== null) {
+      this.renderQuat.copy(this.pathQuat);
+      this.renderPosition.copy(this.pathPosition);
+      this.renderPosition.y -= this.spawnDrop;
+      this.spawnDrop = null;
+    }
+
     const ease = 1 - Math.exp(-FOLLOW_SMOOTHING * deltaTime);
 
     this.renderQuat.slerp(this.pathQuat, ease);
     this.renderPosition.lerp(this.pathPosition, ease);
 
-    this.root.quaternion.copy(this.renderQuat);
-    this.root.position.copy(this.renderPosition);
+    this.animRoot.quaternion.copy(this.renderQuat);
+    this.animRoot.position.copy(this.renderPosition);
+    this.root.position.y = this.yPos;
+  }
+
+  /** Drop the creature below its path target so the ease carries it back up. */
+  spawnBelow(distance: number) {
+    this.spawnDrop = distance;
   }
 
   updateArmBandDeltas(params: CreatureParams, deltaTime: number) {
