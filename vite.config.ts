@@ -25,7 +25,7 @@ export default defineConfig({
       ),
     },
     // Dedupe React to prevent multiple instances when using linked packages
-    dedupe: ["react", "react-dom", "react/jsx-runtime"],
+    dedupe: ["react", "react-dom", "react/jsx-runtime", "three"],
   },
   assetsInclude: ["**/*.glb", "**/*.gltf", "**/*.hdr", "**/*.mp3"],
 });
