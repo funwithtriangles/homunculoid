@@ -182,7 +182,7 @@ export default class ModuleGrid {
   private findFurthestRowInfront() {
     return this.rowGroups.reduce<Group | null>((furthest, row) => {
       if (!furthest) return row;
-      return row.position.z > furthest.position.z ? row : furthest;
+      return row.position.z < furthest.position.z ? row : furthest;
     }, null);
   }
 
