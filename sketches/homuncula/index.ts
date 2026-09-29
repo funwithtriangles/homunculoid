@@ -9,6 +9,7 @@ import {
   PointLight,
   BasicShadowMap,
   SkeletonHelper,
+  Vector3,
 } from "three/webgpu";
 import { Scene, PerspectiveCamera, WebGPURenderer } from "three/webgpu";
 import { GLTFLoader, RGBELoader, SkeletonUtils } from "three-stdlib";
@@ -19,22 +20,10 @@ import ModuleGrid from "./ModuleGrid";
 import Creature from "./Creature";
 import hdrUrl from "./purple.hdr?url";
 import glbUrl from "./homuncula.glb?url";
-import {
-  pmremTexture,
-  luminance,
-  mix,
-  uniform,
-  renderGroup,
-  color,
-  sin,
-  positionWorld,
-  time,
-  vec3,
-  attribute,
-  mx_noise_float,
-  vec2,
-} from "three/tsl";
-import { PARTNER_COUNT } from "./config";
+import { pmremTexture, luminance, mix, uniform, renderGroup } from "three/tsl";
+import { PARTNER_COUNT, pipeSparkUniformParams } from "./config";
+import { pipeSparkShape } from "./pipeSparkShape";
+import { convertParamsToUniforms, updateUniforms } from "../../uniformsUtils";
 
 const gltfLoader = new GLTFLoader();
 const rgbeLoader = new RGBELoader();
@@ -58,6 +47,12 @@ export default class Homuncula {
   envRampHigh = uniform(new Color(0xff0000)).setGroup(renderGroup);
   envIntensity = uniform(1).setGroup(renderGroup);
   pipeSparkColor = uniform(new Color(0xffffff));
+  pipeSparkUniforms = convertParamsToUniforms(pipeSparkUniformParams);
+  pipeSparkDelta = uniform(0).setGroup(renderGroup);
+  pipeSparkPhase = 0;
+  pipeSparkLargeNoiseDelta = uniform(0).setGroup(renderGroup);
+  pipeSparkLargeNoisePhase = 0;
+  creatureWorldPos = uniform(new Vector3());
   pLight = new PointLight(0xffffff, 1);
   creatureAnchor = new Group();
   isCreatureVisible = false;
@@ -95,27 +90,14 @@ export default class Homuncula {
     this.pLight.shadow.camera.far = 10;
     this.pLight.shadow.bias = -0.00001;
 
-    const pipeIndex = attribute("_pipeindex", "float" as const);
-    const pipeOffset = pipeIndex.mul(100);
+    const sparkShape = pipeSparkShape(
+      this.creatureWorldPos,
+      this.pipeSparkUniforms,
+      this.pipeSparkDelta,
+      this.pipeSparkLargeNoiseDelta,
+    );
 
-    const sparkDelta = time.mul(5);
-
-    const sparkMask = mx_noise_float(
-      positionWorld.xz.mul(vec2(0.5, 0.3)),
-    ).smoothstep(0, 0.2);
-
-    const pulse = sin(positionWorld.z.add(sparkDelta.add(pipeOffset)).mul(0.2))
-      .add(1)
-      .div(2);
-
-    const sparkColor = vec3(pulse)
-      .smoothstep(0.99, 1)
-      .mul(this.pipeSparkColor)
-      .mul(sparkMask);
-
-    this.pipeMat.emissiveNode = sparkColor;
-
-    // this.pipeMat.emissiveNode = vec3(sin(pipeIndex.mul(0.5)).add(1).div(2));
+    this.pipeMat.emissiveNode = sparkShape.mul(this.pipeSparkColor);
 
     gltfLoader.load(glbUrl, (gltf) => {
       this.model = gltf.scene;
@@ -216,6 +198,12 @@ export default class Homuncula {
     this.envIntensity.value = params.envIntensity;
 
     this.pipeSparkColor.value.set(...params.pipeSparkColor);
+    updateUniforms(pipeSparkUniformParams, this.pipeSparkUniforms, params);
+    this.pipeSparkPhase += params.pipeSparkSpeed * deltaTime;
+    this.pipeSparkDelta.value = this.pipeSparkPhase;
+    this.pipeSparkLargeNoisePhase +=
+      params.pipeSparkLargeNoiseSpeed * deltaTime;
+    this.pipeSparkLargeNoiseDelta.value = this.pipeSparkLargeNoisePhase;
 
     if (params.isCreatureVisible !== this.isCreatureVisible) {
       this.isCreatureVisible = params.isCreatureVisible;
@@ -223,6 +211,12 @@ export default class Homuncula {
       this.moduleGrid?.setCreature(
         this.isCreatureVisible ? this.creatureAnchor : null,
       );
+    }
+
+    if (this.isCreatureVisible) {
+      this.creatureWorldPos.value.copy(this.creatureAnchor.position);
+    } else {
+      this.creatureWorldPos.value.set(0, 0, -999999);
     }
 
     this.updatePartners(params, deltaTime);
@@ -274,6 +268,10 @@ export default class Homuncula {
 
   creatureReset() {
     console.log("Resetting creature");
+    this.pipeSparkPhase = 0;
+    this.pipeSparkDelta.value = 0;
+    this.pipeSparkLargeNoisePhase = 0;
+    this.pipeSparkLargeNoiseDelta.value = 0;
     this.creature?.reset();
     this.partners.forEach((partner) => partner.reset());
   }

@@ -209,6 +209,7 @@ export default class Camera {
 
   resetRot() {
     this.orbitDelta = 0;
+    this.isFirstFrame = true;
   }
 
   resetTrackedObject() {

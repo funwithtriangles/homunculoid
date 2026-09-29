@@ -166,6 +166,10 @@ export default class ModuleGrid {
         cell.rotation.y = 0;
       }
 
+      if (forcedColumn !== -1 && Math.abs(column - forcedColumn) <= 3) {
+        cell.rotation.y = column < forcedColumn ? Math.PI / 2 : -Math.PI / 2;
+      }
+
       row.add(cell);
 
       if (column === forcedColumn) {

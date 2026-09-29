@@ -1,5 +1,46 @@
 export const PARTNER_COUNT = 3;
 
+export const pipeSparkUniformParams = [
+  {
+    key: "pipeSparkOffsetAmp",
+    defaultValue: 1,
+    sliderMin: 0,
+    sliderMax: 10,
+    step: 0.01,
+  },
+  {
+    key: "pipeSparkWaveLength",
+    defaultValue: 0.2,
+    sliderMin: 0.01,
+    sliderMax: 2,
+    step: 0.01,
+  },
+  {
+    key: "pipeSparkPulseLength",
+    defaultValue: 0.95,
+    sliderMin: -1,
+    sliderMax: 1,
+    step: 0.01,
+  },
+  {
+    key: "pipeSparkFadeOff",
+    defaultValue: 0.05,
+    sliderMin: 0.001,
+    sliderMax: 1,
+    step: 0.001,
+  },
+];
+
+export const pipeSparkSpeedParams = [
+  {
+    key: "pipeSparkSpeed",
+    defaultValue: 0.8,
+    sliderMin: -10,
+    sliderMax: 10,
+    step: 0.01,
+  },
+];
+
 export const homunculaUniformParams = [
   {
     key: "armBandLimbOffset",
@@ -206,11 +247,18 @@ export default {
           valueType: "rgb",
           defaultValue: [1, 1, 1],
         },
+      ],
+    },
+    {
+      groupTitle: "Pipe Sparks",
+      params: [
         {
           key: "pipeSparkColor",
           valueType: "rgb",
           defaultValue: [1, 1, 1],
         },
+        ...pipeSparkUniformParams,
+        ...pipeSparkSpeedParams,
       ],
     },
     {
