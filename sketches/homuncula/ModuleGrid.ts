@@ -179,12 +179,10 @@ export default class ModuleGrid {
     }
   }
 
-  private findClosestRow(z: number) {
-    return this.rowGroups.reduce<Group | null>((closest, row) => {
-      if (!closest) return row;
-      return Math.abs(row.position.z - z) < Math.abs(closest.position.z - z)
-        ? row
-        : closest;
+  private findFurthestRowInfront() {
+    return this.rowGroups.reduce<Group | null>((furthest, row) => {
+      if (!furthest) return row;
+      return row.position.z > furthest.position.z ? row : furthest;
     }, null);
   }
 
@@ -193,7 +191,7 @@ export default class ModuleGrid {
 
     if (!this.creatureRow) {
       this.creatureX = cameraPosition.x;
-      this.creatureRow = this.findClosestRow(cameraPosition.z);
+      this.creatureRow = this.findFurthestRowInfront();
       if (this.creatureRow) {
         this.fillRow(this.creatureRow, this.creatureRow.userData.rowIndex);
       }
