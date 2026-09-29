@@ -8,6 +8,8 @@ import {
   Color,
   PointLight,
   BasicShadowMap,
+  DoubleSide,
+  MeshBasicNodeMaterial,
   SkeletonHelper,
   Vector3,
 } from "three/webgpu";
@@ -20,10 +22,22 @@ import ModuleGrid from "./ModuleGrid";
 import Creature from "./Creature";
 import hdrUrl from "./purple.hdr?url";
 import glbUrl from "./homuncula.glb?url";
-import { pmremTexture, luminance, mix, uniform, renderGroup } from "three/tsl";
-import { PARTNER_COUNT, pipeSparkUniformParams } from "./config";
+import {
+  pmremTexture,
+  luminance,
+  mix,
+  uniform,
+  renderGroup,
+  vec3,
+} from "three/tsl";
+import {
+  homunculaUniformParams,
+  PARTNER_COUNT,
+  pipeSparkUniformParams,
+} from "./config";
 import { pipeSparkShape } from "./pipeSparkShape";
 import { convertParamsToUniforms, updateUniforms } from "../../uniformsUtils";
+import { armBandEnergyShape } from "./armBandEnergyShape";
 
 const gltfLoader = new GLTFLoader();
 const rgbeLoader = new RGBELoader();
@@ -52,6 +66,21 @@ export default class Homuncula {
   pipeSparkPhase = 0;
   pipeSparkLargeNoiseDelta = uniform(0).setGroup(renderGroup);
   pipeSparkLargeNoisePhase = 0;
+  energyColor = uniform(new Color(0xffffff));
+  armBandUniforms = convertParamsToUniforms(homunculaUniformParams);
+  armBandDeltas = {
+    shapeRotation: uniform(0),
+    bigNoise: uniform(0),
+    smallNoise: uniform(0),
+    displacement: uniform(0),
+  };
+  armBandPhase = {
+    shapeRotation: 0,
+    bigNoise: 0,
+    smallNoise: 0,
+    displacement: 0,
+  };
+  energyBandMat = new MeshBasicNodeMaterial();
   creatureWorldPos = uniform(new Vector3());
   pLight = new PointLight(0xffffff, 1);
   creatureAnchor = new Group();
@@ -80,6 +109,16 @@ export default class Homuncula {
     this.root.add(this.pLight);
     this.creatureAnchor.visible = this.isCreatureVisible;
 
+    const { energyShape, position } = armBandEnergyShape(
+      this.armBandUniforms,
+      this.armBandDeltas,
+    );
+    this.energyBandMat.side = DoubleSide;
+    this.energyBandMat.transparent = true;
+    this.energyBandMat.opacityNode = energyShape;
+    this.energyBandMat.colorNode = vec3(energyShape).mul(this.energyColor);
+    this.energyBandMat.positionNode = position;
+
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = BasicShadowMap;
 
@@ -94,7 +133,6 @@ export default class Homuncula {
       this.creatureWorldPos,
       this.pipeSparkUniforms,
       this.pipeSparkDelta,
-      this.pipeSparkLargeNoiseDelta,
     );
 
     this.pipeMat.emissiveNode = sparkShape.mul(this.pipeSparkColor);
@@ -136,13 +174,18 @@ export default class Homuncula {
         SkeletonUtils.clone(this.model!),
       );
 
-      this.creature = new Creature(this.model, { debugSkeleton: false });
+      this.creature = new Creature(this.model, {
+        debugSkeleton: false,
+        energyBandMat: this.energyBandMat,
+      });
       this.creatureAnchor.add(this.creature.root);
 
       this.creature.root.name = "creatureRoot";
 
       this.partners = partnerModels.map((partnerModel, index) => {
-        const partner = new Creature(partnerModel, { shared: this.creature! });
+        const partner = new Creature(partnerModel, {
+          energyBandMat: this.energyBandMat,
+        });
         partner.root.name = `partner${index}`;
         partner.root.visible = this.partnersVisible[index];
         partner.turnOffset = (index + 1) / (PARTNER_COUNT + 1);
@@ -164,6 +207,8 @@ export default class Homuncula {
       if (this.skeletonHelper) this.scene.add(this.skeletonHelper);
 
       appSetters.setModelLoaded(true);
+
+      renderer.compile(scene, camera);
     });
 
     rgbeLoader.load(hdrUrl, (texture) => {
@@ -204,6 +249,10 @@ export default class Homuncula {
     this.pipeSparkLargeNoisePhase +=
       params.pipeSparkLargeNoiseSpeed * deltaTime;
     this.pipeSparkLargeNoiseDelta.value = this.pipeSparkLargeNoisePhase;
+
+    updateUniforms(homunculaUniformParams, this.armBandUniforms, params);
+    this.updateArmBandDeltas(params, deltaTime);
+    this.energyColor.value.set(...params.pipeSparkColor);
 
     if (params.isCreatureVisible !== this.isCreatureVisible) {
       this.isCreatureVisible = params.isCreatureVisible;
@@ -266,12 +315,34 @@ export default class Homuncula {
     });
   }
 
+  updateArmBandDeltas(params: any, deltaTime: number) {
+    const advance = deltaTime * params.armBandMasterSpeed;
+
+    this.armBandPhase.shapeRotation += params.armBandOrbitSpeed * advance;
+    this.armBandPhase.bigNoise += params.armBandBigNoiseSpeed * advance;
+    this.armBandPhase.smallNoise += params.armBandSmallNoiseSpeed * advance;
+    this.armBandPhase.displacement += params.armBandDisplaceSpeed * advance;
+
+    this.armBandDeltas.shapeRotation.value = this.armBandPhase.shapeRotation;
+    this.armBandDeltas.bigNoise.value = this.armBandPhase.bigNoise;
+    this.armBandDeltas.smallNoise.value = this.armBandPhase.smallNoise;
+    this.armBandDeltas.displacement.value = this.armBandPhase.displacement;
+  }
+
   creatureReset() {
     console.log("Resetting creature");
     this.pipeSparkPhase = 0;
     this.pipeSparkDelta.value = 0;
     this.pipeSparkLargeNoisePhase = 0;
     this.pipeSparkLargeNoiseDelta.value = 0;
+    this.armBandPhase.shapeRotation = 0;
+    this.armBandPhase.bigNoise = 0;
+    this.armBandPhase.smallNoise = 0;
+    this.armBandPhase.displacement = 0;
+    this.armBandDeltas.shapeRotation.value = 0;
+    this.armBandDeltas.bigNoise.value = 0;
+    this.armBandDeltas.smallNoise.value = 0;
+    this.armBandDeltas.displacement.value = 0;
     this.creature?.reset();
     this.partners.forEach((partner) => partner.reset());
   }
@@ -283,5 +354,6 @@ export default class Homuncula {
     }
     this.creature?.dispose();
     this.partners.forEach((partner) => partner.dispose());
+    this.energyBandMat.dispose();
   }
 }

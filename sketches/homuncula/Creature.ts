@@ -1,8 +1,5 @@
-import { vec3, uniform } from "three/tsl";
 import {
   Bone,
-  Color,
-  DoubleSide,
   Euler,
   Group,
   Matrix4,
@@ -14,9 +11,6 @@ import {
   SkinnedMesh,
   Vector3,
 } from "three/webgpu";
-import { convertParamsToUniforms, updateUniforms } from "../../uniformsUtils";
-import { armBandEnergyShape } from "./armBandEnergyShape";
-import { homunculaUniformParams } from "./config";
 
 const IDENTITY = new Quaternion();
 const UP = new Vector3(0, 1, 0);
@@ -38,12 +32,6 @@ export interface CreatureParams {
   swimPathFollow: boolean;
   swimPathRoll: number;
   swimSpeed: number;
-  pipeSparkColor: [number, number, number];
-  armBandMasterSpeed: number;
-  armBandOrbitSpeed: number;
-  armBandBigNoiseSpeed: number;
-  armBandSmallNoiseSpeed: number;
-  armBandDisplaceSpeed: number;
 }
 
 /**
@@ -64,27 +52,11 @@ export default class Creature {
   armRBones: Bone[] = [];
   legLBones: Bone[] = [];
   legRBones: Bone[] = [];
-  energyColor = uniform(new Color(0xffffff));
-  energyBandMat!: MeshBasicNodeMaterial;
-  armBandUniforms = convertParamsToUniforms(homunculaUniformParams);
-  armBandDeltas = {
-    shapeRotation: uniform(0),
-    bigNoise: uniform(0),
-    smallNoise: uniform(0),
-    displacement: uniform(0),
-  };
-  armBandPhase = {
-    shapeRotation: 0,
-    bigNoise: 0,
-    smallNoise: 0,
-    displacement: 0,
-  };
 
   /** Whole-revolution offset on the shared path, in turns. */
   turnOffset = 0;
   /** Set by `spawnBelow`; consumed on the next update. */
   private spawnDrop: number | null = null;
-  private shared: Creature | null = null;
 
   bodyLength = 1;
   swim = {
@@ -115,11 +87,13 @@ export default class Creature {
     model: Object3D,
     {
       debugSkeleton = false,
-      shared,
-    }: { debugSkeleton?: boolean; shared?: Creature } = {},
+      energyBandMat,
+    }: {
+      debugSkeleton?: boolean;
+      energyBandMat: MeshBasicNodeMaterial;
+    },
   ) {
     this.root.add(this.animRoot);
-    this.shared = shared ?? null;
     this.model = model;
     this.animRoot.add(model);
 
@@ -151,30 +125,6 @@ export default class Creature {
     const legBandL = model.getObjectByName("legBandL") as Mesh | null;
     const legBandR = model.getObjectByName("legBandR") as Mesh | null;
 
-    if (shared) {
-      // Sharing the uniform objects too, so both creatures read one animation.
-      this.energyColor = shared.energyColor;
-      this.armBandUniforms = shared.armBandUniforms;
-      this.armBandDeltas = shared.armBandDeltas;
-      this.armBandPhase = shared.armBandPhase;
-      this.energyBandMat = shared.energyBandMat;
-    } else {
-      const energyBandMat = new MeshBasicNodeMaterial();
-      energyBandMat.side = DoubleSide;
-
-      const { energyShape, position } = armBandEnergyShape(
-        this.armBandUniforms,
-        this.armBandDeltas,
-      );
-      energyBandMat.transparent = true;
-      energyBandMat.opacityNode = energyShape;
-      energyBandMat.colorNode = vec3(energyShape).mul(this.energyColor);
-      energyBandMat.positionNode = position;
-
-      this.energyBandMat = energyBandMat;
-    }
-
-    const energyBandMat = this.energyBandMat;
     armBandL && (armBandL.material = energyBandMat);
     armBandR && (armBandR.material = energyBandMat);
     legBandL && (legBandL.material = energyBandMat);
@@ -317,13 +267,6 @@ export default class Creature {
   update({ params, deltaTime }: { params: CreatureParams; deltaTime: number }) {
     if (!this.spineBones.length) return;
 
-    // Shared band state is driven once, by the creature that owns it.
-    if (!this.shared) {
-      updateUniforms(homunculaUniformParams, this.armBandUniforms, params);
-      this.updateArmBandDeltas(params, deltaTime);
-      this.energyColor.value.set(...params.pipeSparkColor);
-    }
-
     this.swim.amplitude = params.swimAmp;
     this.swim.frequency = params.swimFreq;
     this.swim.waveLength = params.swimWaveLength;
@@ -411,32 +354,10 @@ export default class Creature {
     this.spawnDrop = distance;
   }
 
-  updateArmBandDeltas(params: CreatureParams, deltaTime: number) {
-    const advance = deltaTime * params.armBandMasterSpeed;
-
-    this.armBandPhase.shapeRotation += params.armBandOrbitSpeed * advance;
-    this.armBandPhase.bigNoise += params.armBandBigNoiseSpeed * advance;
-    this.armBandPhase.smallNoise += params.armBandSmallNoiseSpeed * advance;
-    this.armBandPhase.displacement += params.armBandDisplaceSpeed * advance;
-
-    this.armBandDeltas.shapeRotation.value = this.armBandPhase.shapeRotation;
-    this.armBandDeltas.bigNoise.value = this.armBandPhase.bigNoise;
-    this.armBandDeltas.smallNoise.value = this.armBandPhase.smallNoise;
-    this.armBandDeltas.displacement.value = this.armBandPhase.displacement;
-  }
-
   reset() {
     this.yPos = 0;
     this.turns = 0;
     this.waves = 0;
-    this.armBandPhase.shapeRotation = 0;
-    this.armBandPhase.bigNoise = 0;
-    this.armBandPhase.smallNoise = 0;
-    this.armBandPhase.displacement = 0;
-    this.armBandDeltas.shapeRotation.value = 0;
-    this.armBandDeltas.bigNoise.value = 0;
-    this.armBandDeltas.smallNoise.value = 0;
-    this.armBandDeltas.displacement.value = 0;
     this.pathPosition.set(0, 0, 0);
     this.renderPosition.set(0, 0, 0);
     this.renderQuat.copy(IDENTITY);
