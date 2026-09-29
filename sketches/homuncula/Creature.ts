@@ -5,6 +5,7 @@ import {
   Matrix4,
   Mesh,
   MeshBasicNodeMaterial,
+  MeshStandardNodeMaterial,
   Object3D,
   Quaternion,
   SkeletonHelper,
@@ -87,9 +88,11 @@ export default class Creature {
     model: Object3D,
     {
       debugSkeleton = false,
+      creatureMat,
       energyBandMat,
     }: {
       debugSkeleton?: boolean;
+      creatureMat: MeshStandardNodeMaterial;
       energyBandMat: MeshBasicNodeMaterial;
     },
   ) {
@@ -98,6 +101,7 @@ export default class Creature {
     this.animRoot.add(model);
 
     this.bodyMesh = model.getObjectByName("body") as SkinnedMesh | null;
+    if (this.bodyMesh) this.bodyMesh.material = creatureMat;
 
     this.spineBones = this.registerBoneChain(
       model.getObjectByName("head") as Bone,

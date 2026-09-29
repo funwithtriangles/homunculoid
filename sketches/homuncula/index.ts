@@ -11,6 +11,7 @@ import {
   DoubleSide,
   MeshBasicNodeMaterial,
   SkeletonHelper,
+  SkinnedMesh,
   Vector3,
 } from "three/webgpu";
 import { Scene, PerspectiveCamera, WebGPURenderer } from "three/webgpu";
@@ -55,6 +56,7 @@ export default class Homuncula {
   creature: Creature | null = null;
   partners: Creature[] = [];
   pipeMat = new MeshStandardNodeMaterial();
+  creatureMat: MeshStandardNodeMaterial | null = null;
   bgColor = new Color(0, 0, 1);
   // Render group so the value is uploaded once per render, not per render object.
   envRampLow = uniform(new Color(0x000000)).setGroup(renderGroup);
@@ -174,8 +176,20 @@ export default class Homuncula {
         SkeletonUtils.clone(this.model!),
       );
 
+      const bodyMesh = this.model.getObjectByName("body") as SkinnedMesh | null;
+      if (!bodyMesh || Array.isArray(bodyMesh.material)) {
+        console.warn("Could not find a body mesh with one material in GLB.");
+        return;
+      }
+
+      this.creatureMat = new MeshStandardNodeMaterial();
+      this.creatureMat.copy(
+        bodyMesh.material as unknown as MeshStandardNodeMaterial,
+      );
+
       this.creature = new Creature(this.model, {
         debugSkeleton: false,
+        creatureMat: this.creatureMat,
         energyBandMat: this.energyBandMat,
       });
       this.creatureAnchor.add(this.creature.root);
@@ -184,6 +198,7 @@ export default class Homuncula {
 
       this.partners = partnerModels.map((partnerModel, index) => {
         const partner = new Creature(partnerModel, {
+          creatureMat: this.creatureMat!,
           energyBandMat: this.energyBandMat,
         });
         partner.root.name = `partner${index}`;
@@ -354,6 +369,8 @@ export default class Homuncula {
     }
     this.creature?.dispose();
     this.partners.forEach((partner) => partner.dispose());
+    this.creatureMat?.dispose();
+    this.creatureMat = null;
     this.energyBandMat.dispose();
   }
 }
