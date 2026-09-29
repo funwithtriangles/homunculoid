@@ -36,7 +36,7 @@ import {
   PARTNER_COUNT,
   pipeSparkUniformParams,
 } from "./config";
-import { pipeSparkShape } from "./pipeSparkShape";
+import { creatureSparkShape, pipeSparkShape } from "./pipeSparkShape";
 import { convertParamsToUniforms, updateUniforms } from "../../uniformsUtils";
 import { armBandEnergyShape } from "./armBandEnergyShape";
 
@@ -56,7 +56,7 @@ export default class Homuncula {
   creature: Creature | null = null;
   partners: Creature[] = [];
   pipeMat = new MeshStandardNodeMaterial();
-  creatureMat: MeshStandardNodeMaterial | null = null;
+  creatureMat = new MeshStandardNodeMaterial();
   bgColor = new Color(0, 0, 1);
   // Render group so the value is uploaded once per render, not per render object.
   envRampLow = uniform(new Color(0x000000)).setGroup(renderGroup);
@@ -66,6 +66,8 @@ export default class Homuncula {
   pipeSparkUniforms = convertParamsToUniforms(pipeSparkUniformParams);
   pipeSparkDelta = uniform(0).setGroup(renderGroup);
   pipeSparkPhase = 0;
+  shieldAngleDelta = uniform(0).setGroup(renderGroup);
+  shieldAnglePhase = 0;
   pipeSparkLargeNoiseDelta = uniform(0).setGroup(renderGroup);
   pipeSparkLargeNoisePhase = 0;
   energyColor = uniform(new Color(0xffffff));
@@ -137,7 +139,17 @@ export default class Homuncula {
       this.pipeSparkDelta,
     );
 
+    const shieldSparkShape = creatureSparkShape(
+      this.pipeSparkUniforms,
+      this.pipeSparkDelta,
+      this.shieldAngleDelta,
+    );
+
     this.pipeMat.emissiveNode = sparkShape.mul(this.pipeSparkColor);
+
+    this.creatureMat.emissiveNode = shieldSparkShape
+      .mul(this.pipeSparkColor)
+      .mul(this.pipeSparkUniforms.creatureSparkAmp);
 
     gltfLoader.load(glbUrl, (gltf) => {
       this.model = gltf.scene;
@@ -182,7 +194,6 @@ export default class Homuncula {
         return;
       }
 
-      this.creatureMat = new MeshStandardNodeMaterial();
       this.creatureMat.copy(
         bodyMesh.material as unknown as MeshStandardNodeMaterial,
       );
@@ -261,6 +272,8 @@ export default class Homuncula {
     updateUniforms(pipeSparkUniformParams, this.pipeSparkUniforms, params);
     this.pipeSparkPhase += params.pipeSparkSpeed * deltaTime;
     this.pipeSparkDelta.value = this.pipeSparkPhase;
+    this.shieldAnglePhase += params.pipeSparkShieldAngleSpeed * deltaTime;
+    this.shieldAngleDelta.value = this.shieldAnglePhase;
     this.pipeSparkLargeNoisePhase +=
       params.pipeSparkLargeNoiseSpeed * deltaTime;
     this.pipeSparkLargeNoiseDelta.value = this.pipeSparkLargeNoisePhase;
@@ -280,7 +293,7 @@ export default class Homuncula {
     if (this.isCreatureVisible) {
       this.creatureWorldPos.value.copy(this.creatureAnchor.position);
     } else {
-      this.creatureWorldPos.value.set(0, 0, -999999);
+      this.creatureWorldPos.value.set(0, 0, -9999);
     }
 
     this.updatePartners(params, deltaTime);
@@ -348,6 +361,8 @@ export default class Homuncula {
     console.log("Resetting creature");
     this.pipeSparkPhase = 0;
     this.pipeSparkDelta.value = 0;
+    this.shieldAnglePhase = 0;
+    this.shieldAngleDelta.value = 0;
     this.pipeSparkLargeNoisePhase = 0;
     this.pipeSparkLargeNoiseDelta.value = 0;
     this.armBandPhase.shapeRotation = 0;
@@ -370,7 +385,6 @@ export default class Homuncula {
     this.creature?.dispose();
     this.partners.forEach((partner) => partner.dispose());
     this.creatureMat?.dispose();
-    this.creatureMat = null;
     this.energyBandMat.dispose();
   }
 }

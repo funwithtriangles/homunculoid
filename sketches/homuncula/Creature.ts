@@ -43,6 +43,7 @@ export default class Creature {
   root = new Group();
   model: Object3D;
   bodyMesh: SkinnedMesh | null = null;
+  shieldMesh: Mesh | null = null;
   skeletonHelper: SkeletonHelper | null = null;
   turns: number = 0;
   waves: number = 0;
@@ -101,7 +102,9 @@ export default class Creature {
     this.animRoot.add(model);
 
     this.bodyMesh = model.getObjectByName("body") as SkinnedMesh | null;
+    this.shieldMesh = model.getObjectByName("shield") as Mesh | null;
     if (this.bodyMesh) this.bodyMesh.material = creatureMat;
+    if (this.shieldMesh) this.shieldMesh.material = creatureMat;
 
     this.spineBones = this.registerBoneChain(
       model.getObjectByName("head") as Bone,
