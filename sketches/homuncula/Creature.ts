@@ -353,6 +353,7 @@ export default class Creature {
 
     this.animRoot.quaternion.copy(this.renderQuat);
     this.animRoot.position.copy(this.renderPosition);
+
     this.root.position.y = this.yPos;
   }
 
