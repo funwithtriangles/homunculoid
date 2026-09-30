@@ -66,6 +66,24 @@ export default {
       sliderMax: 1,
     },
     {
+      key: "colSpeedMin",
+      defaultValue: 0,
+      sliderMin: 0,
+      sliderMax: 2,
+    },
+    {
+      key: "colSpeedAmp",
+      defaultValue: 1,
+      sliderMin: 0,
+      sliderMax: 2,
+    },
+    {
+      key: "colSpeedWaveLength",
+      defaultValue: 12,
+      sliderMin: 0,
+      sliderMax: 50,
+    },
+    {
       key: "yStartOffset",
       defaultValue: 6,
       sliderMin: 0,

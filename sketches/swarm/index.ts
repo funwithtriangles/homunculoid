@@ -100,6 +100,9 @@ export default class Swarm {
     instanceRotY: number,
     yStartOffset: number,
     rowSpacing: number,
+    colSpeedMin: number,
+    colSpeedAmp: number,
+    colSpeedWaveLength: number,
   ) {
     if (!this.instancedMesh) return;
 
@@ -107,12 +110,18 @@ export default class Swarm {
 
     for (let row = 0; row < ROW_COUNT; row++) {
       for (let i = 0; i < COL_COUNT; i++) {
-        const angle = (i / COL_COUNT) * Math.PI * 2;
-        const yStart = (i / COL_COUNT) * yStartOffset;
+        const cN = i / COL_COUNT;
+        const angle = cN * Math.PI * 2;
+        const yStart = cN * yStartOffset;
         const rowY = row * rowSpacing;
+        const colSpeed =
+          colSpeedMin +
+          ((Math.sin(cN * Math.PI * 2 * colSpeedWaveLength) + 1) / 2) *
+            colSpeedAmp;
         // Row offset sits inside the wrap so rows loop with the rest of the swarm.
         const y =
-          ((((yStart * yLimit + rowY + this.yTravel) % yLimit) + yLimit) %
+          ((((yStart * yLimit + rowY + this.yTravel * colSpeed) % yLimit) +
+            yLimit) %
             yLimit) -
           yLimit / 2;
         this.dummy.position.set(
@@ -130,13 +139,15 @@ export default class Swarm {
 
   update({ params: p, deltaTime: f, deltaFrame }: UpdateParams) {
     updateUniforms(swarmUniformParams, this.uniforms, p);
-    this.yTravel =
-      (this.yTravel + p.ySpeed * deltaFrame) % (p.rowSpacing * ROW_COUNT);
+    this.yTravel = this.yTravel + p.ySpeed * deltaFrame;
     this.updateInstances(
       p.ringRadius,
       p.instanceRotY,
       p.yStartOffset,
       p.rowSpacing,
+      p.colSpeedMin,
+      p.colSpeedAmp,
+      p.colSpeedWaveLength,
     );
     // Check if the tracked object has changed and update the reference accordingly.
     if (this.trackedObject && p.trackedObjectName) {
