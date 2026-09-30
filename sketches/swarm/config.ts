@@ -1,5 +1,10 @@
 export const swarmUniformParams = [
   {
+    key: "emissiveColor",
+    valueType: "rgb",
+    defaultValue: [0, 0, 0],
+  },
+  {
     key: "wiggleWaveLength",
     defaultValue: 0.1,
     sliderMin: 0,
@@ -112,6 +117,13 @@ export default {
       // Non-zero, as loop height is derived from it.
       sliderMin: 0.01,
       sliderMax: 20,
+    },
+    {
+      key: "matcapFileName",
+      valueType: "file",
+      title: "Matcap Texture",
+      defaultValue: null,
+      accept: ["image/*"],
     },
     ...swarmUniformParams,
   ],

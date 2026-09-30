@@ -3,10 +3,12 @@ import {
   InstancedBufferAttribute,
   InstancedMesh,
   Mesh,
-  MeshPhongNodeMaterial,
+  MeshLambertNodeMaterial,
+  MeshMatcapNodeMaterial,
   Object3D,
   PerspectiveCamera,
   Scene,
+  TextureLoader,
   Vector3,
   WebGPURenderer,
 } from "three/webgpu";
@@ -25,9 +27,11 @@ import { swarmDisplace } from "./swarmDisplace";
 
 const gltfLoader = new GLTFLoader();
 
-const COL_COUNT = 100;
+const textureLoader = new TextureLoader();
+
+const COL_COUNT = 50;
 const ROW_COUNT = 10;
-const LAYER_COUNT = 3;
+const LAYER_COUNT = 5;
 const INSTANCE_COUNT = COL_COUNT * ROW_COUNT * LAYER_COUNT;
 
 interface UpdateParams {
@@ -49,12 +53,13 @@ export default class Swarm {
   dummy = new Object3D();
   yTravel = 0;
   yRotTravel = 0;
-  swarmMat = new MeshPhongNodeMaterial();
+  swarmMat = new MeshMatcapNodeMaterial();
   uniforms = convertParamsToUniforms(swarmUniformParams);
   ringAngleAttribute = new InstancedBufferAttribute(
     new Float32Array(INSTANCE_COUNT),
     1,
   );
+  lastMatCapUrl?: string;
 
   constructor({
     scene,
@@ -88,6 +93,7 @@ export default class Swarm {
       });
 
       this.swarmMat.positionNode = positionLocal.add(displace);
+      this.swarmMat.emissiveNode = this.uniforms.emissiveColor;
     });
   }
 
@@ -145,6 +151,15 @@ export default class Swarm {
 
   update({ params: p, deltaTime: f, deltaFrame }: UpdateParams) {
     updateUniforms(swarmUniformParams, this.uniforms, p);
+
+    if (p.matcapFileName && p.matcapFileName !== this.lastMatCapUrl) {
+      this.lastMatCapUrl = p.matcapFileName;
+      textureLoader.load(p.matcapFileName, (matcap) => {
+        this.swarmMat.matcap = matcap;
+        this.swarmMat.needsUpdate = true;
+      });
+    }
+
     this.yTravel = this.yTravel + p.ySpeed * deltaFrame;
     this.yRotTravel = this.yRotTravel + p.yRotSpeed * deltaFrame;
     this.root.rotation.y =
