@@ -1,5 +1,6 @@
 import {
   Group,
+  InstancedBufferAttribute,
   InstancedMesh,
   Mesh,
   MeshStandardNodeMaterial,
@@ -13,21 +14,19 @@ import { GLTFLoader } from "three-stdlib";
 import glbUrl from "./lo.glb?url";
 import {
   positionLocal,
-  positionWorld,
   sin,
   cos,
   vec3,
-  mx_atan2,
-  instanceIndex,
-  float,
+  instancedBufferAttribute,
 } from "three/tsl";
 import { swarmUniformParams } from "./config";
 import { convertParamsToUniforms, updateUniforms } from "../../uniformsUtils";
+import { swarmDisplace } from "./swarmDisplace";
 
 const gltfLoader = new GLTFLoader();
 
 const COL_COUNT = 100;
-const ROW_COUNT = 5;
+const ROW_COUNT = 10;
 
 interface UpdateParams {
   params: Record<string, any>;
@@ -77,41 +76,22 @@ export default class Swarm {
 
       this.root.add(this.instancedMesh);
 
-      const {
-        wiggleWaveLength,
-        wiggleAmp,
-        radialWaveLength,
-        radialAmp,
-        radialOffsetAmp,
-        radialOffsetWaveLength,
-      } = this.uniforms;
+      const ringAngles = new Float32Array(COL_COUNT * ROW_COUNT);
+      for (let row = 0; row < ROW_COUNT; row++) {
+        for (let i = 0; i < COL_COUNT; i++) {
+          ringAngles[row * COL_COUNT + i] = (i / COL_COUNT) * Math.PI * 2;
+        }
+      }
+      const ringAngleAttribute = new InstancedBufferAttribute(ringAngles, 1);
+      this.model.geometry.setAttribute("_ringAngle", ringAngleAttribute);
+      const ringAngle = instancedBufferAttribute(ringAngleAttribute);
 
-      const radAngle = mx_atan2(positionLocal.z, positionLocal.x);
-      const radialDir = vec3(positionLocal.x, 0, positionLocal.z).normalize();
+      const displace = swarmDisplace({
+        uniforms: this.uniforms,
+        ringAngle,
+      });
 
-      const radialDisplaceOffset = sin(
-        radAngle.mul(radialOffsetWaveLength),
-      ).mul(radialOffsetAmp);
-
-      const radialDisplace = radialDir
-        .mul(
-          sin(positionWorld.y.mul(radialWaveLength).add(radialDisplaceOffset)),
-        )
-        .mul(radialAmp);
-
-      // Ring angle matches updateInstances(); wiggle runs along the ring's tangent.
-      const ringAngle = float(instanceIndex.mod(COL_COUNT))
-        .div(COL_COUNT)
-        .mul(Math.PI * 2);
-      const ringTangent = vec3(sin(ringAngle).negate(), 0, cos(ringAngle));
-
-      const wiggleDisplace = ringTangent.mul(
-        sin(positionWorld.y.mul(wiggleWaveLength)).mul(wiggleAmp),
-      );
-
-      this.swarmMat.positionNode = positionLocal
-        .add(radialDisplace)
-        .add(wiggleDisplace);
+      this.swarmMat.positionNode = positionLocal.add(displace);
     });
   }
 
