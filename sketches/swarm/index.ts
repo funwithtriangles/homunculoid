@@ -29,7 +29,7 @@ const gltfLoader = new GLTFLoader();
 
 const textureLoader = new TextureLoader();
 
-const COL_COUNT = 50;
+const COL_COUNT = 80;
 const ROW_COUNT = 10;
 const LAYER_COUNT = 5;
 const INSTANCE_COUNT = COL_COUNT * ROW_COUNT * LAYER_COUNT;
@@ -51,7 +51,7 @@ export default class Swarm {
   targetTrackedPosition = new Vector3();
   isFirstFrame = true;
   dummy = new Object3D();
-  yTravel = 0;
+  yTravel = new Float32Array(INSTANCE_COUNT);
   yRotTravel = 0;
   swarmMat = new MeshMatcapNodeMaterial();
   uniforms = convertParamsToUniforms(swarmUniformParams);
@@ -101,11 +101,13 @@ export default class Swarm {
     ringRadius: number,
     yStartOffset: number,
     rowSpacing: number,
-    colSpeedMin: number,
+    ySpeed: number,
+    deltaFrame: number,
     colSpeedAmp: number,
     colSpeedWaveLength: number,
     layerSpacing: number,
     layerRadialOffset: number,
+    layerYOffset: number,
   ) {
     if (!this.instancedMesh) return;
 
@@ -115,6 +117,7 @@ export default class Swarm {
     for (let layer = 0; layer < LAYER_COUNT; layer++) {
       const layerRadius = ringRadius + layer * layerSpacing;
       const layerAngle = layer * layerRadialOffset;
+      const layerY = layer * layerYOffset;
 
       for (let row = 0; row < ROW_COUNT; row++) {
         for (let i = 0; i < COL_COUNT; i++) {
@@ -124,21 +127,23 @@ export default class Swarm {
           const yStart = cN * yStartOffset;
           const rowY = row * rowSpacing;
           const colSpeed =
-            colSpeedMin +
             ((Math.sin(cN * Math.PI * 2 * colSpeedWaveLength) + 1) / 2) *
-              colSpeedAmp;
+            colSpeedAmp;
+          this.yTravel[index] =
+            (this.yTravel[index] + ySpeed * deltaFrame + colSpeed) % yLimit;
           // Row offset sits inside the wrap so rows loop with the rest of the swarm.
           const y =
-            ((((yStart * yLimit + rowY + this.yTravel * colSpeed) % yLimit) +
-              yLimit) %
+            ((yStart * yLimit + layerY + rowY + this.yTravel[index] + yLimit) %
               yLimit) -
             yLimit / 2;
+
           this.dummy.position.set(
             Math.cos(angle) * layerRadius,
             y,
             Math.sin(angle) * layerRadius,
           );
-          this.dummy.rotation.y = -angle + this.yRotTravel * (colSpeed * 0.5);
+          this.dummy.rotation.y =
+            -angle + this.yTravel[index] * 0.1 + this.yRotTravel;
           this.dummy.updateMatrix();
           this.instancedMesh.setMatrixAt(index, this.dummy.matrix);
           ringAngles[index] = angle;
@@ -160,7 +165,6 @@ export default class Swarm {
       });
     }
 
-    this.yTravel = this.yTravel + p.ySpeed * deltaFrame;
     this.yRotTravel = this.yRotTravel + p.yRotSpeed * deltaFrame;
     this.root.rotation.y =
       (this.root.rotation.y + p.groupYRotSpeed * deltaFrame) % (Math.PI * 2);
@@ -168,11 +172,13 @@ export default class Swarm {
       p.ringRadius,
       p.yStartOffset,
       p.rowSpacing,
-      p.colSpeedMin,
+      p.ySpeed,
+      deltaFrame,
       p.colSpeedAmp,
       p.colSpeedWaveLength,
       p.layerSpacing,
       p.layerRadialOffset,
+      p.layerYOffset,
     );
     // Check if the tracked object has changed and update the reference accordingly.
     if (this.trackedObject && p.trackedObjectName) {
@@ -197,7 +203,7 @@ export default class Swarm {
     } else {
       this.trackedPosition.lerp(
         this.targetTrackedPosition,
-        (1 - Math.exp(-1 * f)) * 10,
+        1 - Math.exp(-1 * f),
       );
     }
 

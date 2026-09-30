@@ -70,6 +70,12 @@ export default {
       sliderMax: Math.PI,
     },
     {
+      key: "layerYOffset",
+      defaultValue: 0,
+      sliderMin: -10,
+      sliderMax: 10,
+    },
+    {
       key: "yRotSpeed",
       defaultValue: 0,
       sliderMin: -0.2,
@@ -86,12 +92,6 @@ export default {
       defaultValue: 0.05,
       sliderMin: -1,
       sliderMax: 1,
-    },
-    {
-      key: "colSpeedMin",
-      defaultValue: 0,
-      sliderMin: 0,
-      sliderMax: 2,
     },
     {
       key: "colSpeedAmp",
