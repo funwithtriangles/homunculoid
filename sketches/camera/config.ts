@@ -73,6 +73,12 @@ export default {
           valueType: "boolean",
           defaultValue: false,
         },
+        {
+          key: "lerpSpeed",
+          title: "Lerp Speed",
+          valueType: "number",
+          defaultValue: 0.1,
+        },
       ],
     },
     {

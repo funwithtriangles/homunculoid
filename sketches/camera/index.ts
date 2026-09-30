@@ -62,6 +62,8 @@ export default class Camera {
   }
 
   update({ params: p, deltaTime: f }: UpdateParams) {
+    const lerpVal = (1 - Math.exp(-1 * f)) * p.lerpSpeed;
+
     // Check if the tracked object has changed and update the reference accordingly.
     if (this.trackedObject && p.trackedObjectName) {
       const newObject =
@@ -163,12 +165,9 @@ export default class Camera {
       this.orbitRad = p.orbitRad;
       this.trackedPosition.copy(this.targetTrackedPosition);
     } else {
-      this.orbitRad = lerp(this.orbitRad, p.orbitRad, 1 - Math.exp(-1 * f));
+      this.orbitRad = lerp(this.orbitRad, p.orbitRad, lerpVal);
 
-      this.trackedPosition.lerp(
-        this.targetTrackedPosition,
-        1 - Math.exp(-1 * f),
-      );
+      this.trackedPosition.lerp(this.targetTrackedPosition, lerpVal);
     }
 
     const circX = Math.sin(this.orbitDelta) * this.orbitRad * p.bigOrbitRad;
@@ -184,8 +183,8 @@ export default class Camera {
       this.lookAtPos.copy(this.targetLookAtPos);
       this.yPos = p.camY;
     } else {
-      this.lookAtPos.lerp(this.targetLookAtPos, 1 - Math.exp(-1 * f));
-      this.yPos = lerp(this.yPos, p.camY, 1 - Math.exp(-1 * f));
+      this.lookAtPos.lerp(this.targetLookAtPos, lerpVal);
+      this.yPos = lerp(this.yPos, p.camY, lerpVal);
     }
 
     this.sketchApi.camera.lookAt(this.lookAtPos);
@@ -193,7 +192,7 @@ export default class Camera {
     if (this.isFirstFrame) {
       this.zRot = this.targetZRot;
     } else {
-      this.zRot = lerp(this.zRot, this.targetZRot, 1 - Math.exp(-1 * f));
+      this.zRot = lerp(this.zRot, this.targetZRot, lerpVal);
     }
 
     this.sketchApi.camera.rotateZ(this.zRot);
