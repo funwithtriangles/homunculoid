@@ -48,6 +48,7 @@ export default class Swarm {
   isFirstFrame = true;
   dummy = new Object3D();
   yTravel = 0;
+  yRotTravel = 0;
   swarmMat = new MeshPhongNodeMaterial();
   uniforms = convertParamsToUniforms(swarmUniformParams);
   ringAngleAttribute = new InstancedBufferAttribute(
@@ -92,7 +93,6 @@ export default class Swarm {
 
   updateInstances(
     ringRadius: number,
-    instanceRotY: number,
     yStartOffset: number,
     rowSpacing: number,
     colSpeedMin: number,
@@ -132,7 +132,7 @@ export default class Swarm {
             y,
             Math.sin(angle) * layerRadius,
           );
-          this.dummy.rotation.y = -angle + instanceRotY;
+          this.dummy.rotation.y = -angle + this.yRotTravel * (colSpeed * 0.5);
           this.dummy.updateMatrix();
           this.instancedMesh.setMatrixAt(index, this.dummy.matrix);
           ringAngles[index] = angle;
@@ -146,9 +146,11 @@ export default class Swarm {
   update({ params: p, deltaTime: f, deltaFrame }: UpdateParams) {
     updateUniforms(swarmUniformParams, this.uniforms, p);
     this.yTravel = this.yTravel + p.ySpeed * deltaFrame;
+    this.yRotTravel = this.yRotTravel + p.yRotSpeed * deltaFrame;
+    this.root.rotation.y =
+      (this.root.rotation.y + p.groupYRotSpeed * deltaFrame) % (Math.PI * 2);
     this.updateInstances(
       p.ringRadius,
-      p.instanceRotY,
       p.yStartOffset,
       p.rowSpacing,
       p.colSpeedMin,

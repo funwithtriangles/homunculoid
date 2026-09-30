@@ -65,11 +65,16 @@ export default {
       sliderMax: Math.PI,
     },
     {
-      key: "instanceRotY",
-      title: "Instance Y Rotation",
+      key: "yRotSpeed",
       defaultValue: 0,
-      sliderMin: -Math.PI,
-      sliderMax: Math.PI,
+      sliderMin: -0.2,
+      sliderMax: 0.2,
+    },
+    {
+      key: "groupYRotSpeed",
+      defaultValue: 0,
+      sliderMin: -0.2,
+      sliderMax: 0.2,
     },
     {
       key: "ySpeed",
