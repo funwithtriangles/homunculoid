@@ -3,7 +3,7 @@ import {
   InstancedBufferAttribute,
   InstancedMesh,
   Mesh,
-  MeshStandardNodeMaterial,
+  MeshPhongNodeMaterial,
   Object3D,
   PerspectiveCamera,
   Scene,
@@ -27,6 +27,8 @@ const gltfLoader = new GLTFLoader();
 
 const COL_COUNT = 100;
 const ROW_COUNT = 10;
+const LAYER_COUNT = 3;
+const INSTANCE_COUNT = COL_COUNT * ROW_COUNT * LAYER_COUNT;
 
 interface UpdateParams {
   params: Record<string, any>;
@@ -46,8 +48,12 @@ export default class Swarm {
   isFirstFrame = true;
   dummy = new Object3D();
   yTravel = 0;
-  swarmMat = new MeshStandardNodeMaterial();
+  swarmMat = new MeshPhongNodeMaterial();
   uniforms = convertParamsToUniforms(swarmUniformParams);
+  ringAngleAttribute = new InstancedBufferAttribute(
+    new Float32Array(INSTANCE_COUNT),
+    1,
+  );
 
   constructor({
     scene,
@@ -64,27 +70,16 @@ export default class Swarm {
       const scene = gltf.scene;
       this.model = scene.getObjectByName("low") as Mesh;
 
-      this.swarmMat.copy(
-        this.model.material as unknown as MeshStandardNodeMaterial,
-      );
-
       this.instancedMesh = new InstancedMesh(
         this.model.geometry,
         this.swarmMat,
-        COL_COUNT * ROW_COUNT,
+        INSTANCE_COUNT,
       );
 
       this.root.add(this.instancedMesh);
 
-      const ringAngles = new Float32Array(COL_COUNT * ROW_COUNT);
-      for (let row = 0; row < ROW_COUNT; row++) {
-        for (let i = 0; i < COL_COUNT; i++) {
-          ringAngles[row * COL_COUNT + i] = (i / COL_COUNT) * Math.PI * 2;
-        }
-      }
-      const ringAngleAttribute = new InstancedBufferAttribute(ringAngles, 1);
-      this.model.geometry.setAttribute("_ringAngle", ringAngleAttribute);
-      const ringAngle = instancedBufferAttribute(ringAngleAttribute);
+      this.model.geometry.setAttribute("_ringAngle", this.ringAngleAttribute);
+      const ringAngle = instancedBufferAttribute(this.ringAngleAttribute);
 
       const displace = swarmDisplace({
         uniforms: this.uniforms,
@@ -103,38 +98,49 @@ export default class Swarm {
     colSpeedMin: number,
     colSpeedAmp: number,
     colSpeedWaveLength: number,
+    layerSpacing: number,
+    layerRadialOffset: number,
   ) {
     if (!this.instancedMesh) return;
 
     const yLimit = rowSpacing * ROW_COUNT;
+    const ringAngles = this.ringAngleAttribute.array as Float32Array;
 
-    for (let row = 0; row < ROW_COUNT; row++) {
-      for (let i = 0; i < COL_COUNT; i++) {
-        const cN = i / COL_COUNT;
-        const angle = cN * Math.PI * 2;
-        const yStart = cN * yStartOffset;
-        const rowY = row * rowSpacing;
-        const colSpeed =
-          colSpeedMin +
-          ((Math.sin(cN * Math.PI * 2 * colSpeedWaveLength) + 1) / 2) *
-            colSpeedAmp;
-        // Row offset sits inside the wrap so rows loop with the rest of the swarm.
-        const y =
-          ((((yStart * yLimit + rowY + this.yTravel * colSpeed) % yLimit) +
-            yLimit) %
-            yLimit) -
-          yLimit / 2;
-        this.dummy.position.set(
-          Math.cos(angle) * ringRadius,
-          y,
-          Math.sin(angle) * ringRadius,
-        );
-        this.dummy.rotation.y = -angle + instanceRotY;
-        this.dummy.updateMatrix();
-        this.instancedMesh.setMatrixAt(row * COL_COUNT + i, this.dummy.matrix);
+    for (let layer = 0; layer < LAYER_COUNT; layer++) {
+      const layerRadius = ringRadius + layer * layerSpacing;
+      const layerAngle = layer * layerRadialOffset;
+
+      for (let row = 0; row < ROW_COUNT; row++) {
+        for (let i = 0; i < COL_COUNT; i++) {
+          const index = (layer * ROW_COUNT + row) * COL_COUNT + i;
+          const cN = i / COL_COUNT;
+          const angle = cN * Math.PI * 2 + layerAngle;
+          const yStart = cN * yStartOffset;
+          const rowY = row * rowSpacing;
+          const colSpeed =
+            colSpeedMin +
+            ((Math.sin(cN * Math.PI * 2 * colSpeedWaveLength) + 1) / 2) *
+              colSpeedAmp;
+          // Row offset sits inside the wrap so rows loop with the rest of the swarm.
+          const y =
+            ((((yStart * yLimit + rowY + this.yTravel * colSpeed) % yLimit) +
+              yLimit) %
+              yLimit) -
+            yLimit / 2;
+          this.dummy.position.set(
+            Math.cos(angle) * layerRadius,
+            y,
+            Math.sin(angle) * layerRadius,
+          );
+          this.dummy.rotation.y = -angle + instanceRotY;
+          this.dummy.updateMatrix();
+          this.instancedMesh.setMatrixAt(index, this.dummy.matrix);
+          ringAngles[index] = angle;
+        }
       }
     }
     this.instancedMesh.instanceMatrix.needsUpdate = true;
+    this.ringAngleAttribute.needsUpdate = true;
   }
 
   update({ params: p, deltaTime: f, deltaFrame }: UpdateParams) {
@@ -148,6 +154,8 @@ export default class Swarm {
       p.colSpeedMin,
       p.colSpeedAmp,
       p.colSpeedWaveLength,
+      p.layerSpacing,
+      p.layerRadialOffset,
     );
     // Check if the tracked object has changed and update the reference accordingly.
     if (this.trackedObject && p.trackedObjectName) {

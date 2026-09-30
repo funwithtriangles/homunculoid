@@ -53,6 +53,18 @@ export default {
       sliderMax: 50,
     },
     {
+      key: "layerSpacing",
+      defaultValue: 2,
+      sliderMin: 0,
+      sliderMax: 20,
+    },
+    {
+      key: "layerRadialOffset",
+      defaultValue: 0,
+      sliderMin: -Math.PI,
+      sliderMax: Math.PI,
+    },
+    {
       key: "instanceRotY",
       title: "Instance Y Rotation",
       defaultValue: 0,
