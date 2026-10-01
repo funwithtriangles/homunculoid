@@ -80,10 +80,7 @@ class GaussianBlurNode extends TempNode {
   updateBefore(frame) {
     const { renderer } = frame;
 
-    _rendererState = RendererUtils.resetRendererState(
-      renderer,
-      _rendererState,
-    );
+    _rendererState = RendererUtils.resetRendererState(renderer, _rendererState);
 
     const textureNode = this.textureNode;
     const map = textureNode.value;
