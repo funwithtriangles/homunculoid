@@ -121,6 +121,8 @@ export default class Homuncula {
     );
     this.energyBandMat.side = DoubleSide;
     this.energyBandMat.transparent = true;
+    // Sprite meshes sort from the origin, so the band can draw first; its depth would hide them.
+    this.energyBandMat.depthWrite = false;
     this.energyBandMat.opacityNode = energyShape;
     this.energyBandMat.colorNode = vec3(energyShape).mul(this.energyColor);
     this.energyBandMat.positionNode = position;
