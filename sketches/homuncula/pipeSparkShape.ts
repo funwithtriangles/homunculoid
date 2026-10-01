@@ -107,13 +107,11 @@ export const creatureSparkShape = (
 
   const mI = pipeSparkUniforms.pipeSparkShieldMaskInfluence;
 
-  const shieldIndex = attribute("_shield", "float" as const);
-  let shieldMask = smoothstep(1.1, 1.4, positionLocal.y);
-  shieldMask = shieldMask.max(shieldIndex);
+  let shieldIndex = attribute("_shield", "float" as const);
 
   const pulse = radialNoise
     .mul(waveMask.mul(mI).add(mI.oneMinus()))
-    .mul(shieldMask);
+    .mul(shieldIndex);
 
   return vec3(pulse);
 };

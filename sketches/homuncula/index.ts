@@ -163,7 +163,9 @@ export default class Homuncula {
       .mul(this.pipeSparkUniforms.creatureSparkAmp);
     this.creatureMat.mrtNode = mrt({
       output,
-      glowColor: output.mul(shieldSparkShape),
+      glowColor: output.mul(
+        shieldSparkShape.mul(this.pipeSparkUniforms.creatureSparkAmp),
+      ),
     });
 
     gltfLoader.load(glbUrl, (gltf) => {
