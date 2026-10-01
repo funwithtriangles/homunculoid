@@ -19,6 +19,7 @@ import {
   cos,
   vec3,
   instancedBufferAttribute,
+  uniform,
 } from "three/tsl";
 import { swarmUniformParams } from "./config";
 import { convertParamsToUniforms, updateUniforms } from "../../uniformsUtils";
@@ -51,6 +52,7 @@ export default class Swarm {
   isFirstFrame = true;
   dummy = new Object3D();
   yTravel = new Float32Array(INSTANCE_COUNT);
+  yGroupTravel = uniform(0);
   yRotTravel = 0;
   swarmMat = new MeshLambertNodeMaterial();
   uniforms = convertParamsToUniforms(swarmUniformParams);
@@ -89,6 +91,7 @@ export default class Swarm {
       const displace = swarmDisplace({
         uniforms: this.uniforms,
         ringAngle,
+        yGroupTravel: this.yGroupTravel,
       });
 
       this.swarmMat.positionNode = positionLocal.add(displace);
@@ -102,6 +105,7 @@ export default class Swarm {
     yStartOffset: number,
     rowSpacing: number,
     ySpeed: number,
+    yGroupSpeed: number,
     deltaFrame: number,
     colSpeedAmp: number,
     colSpeedWaveLength: number,
@@ -113,6 +117,8 @@ export default class Swarm {
 
     const yLimit = rowSpacing * ROW_COUNT;
     const ringAngles = this.ringAngleAttribute.array as Float32Array;
+    const yGroupStep = yGroupSpeed;
+    this.yGroupTravel.value += yGroupStep;
 
     for (let layer = 0; layer < LAYER_COUNT; layer++) {
       const layerRadius = ringRadius + layer * layerSpacing;
@@ -129,8 +135,10 @@ export default class Swarm {
           const colSpeed =
             ((Math.sin(cN * Math.PI * 2 * colSpeedWaveLength) + 1) / 2) *
             colSpeedAmp;
+
           this.yTravel[index] =
-            (this.yTravel[index] + ySpeed * deltaFrame + colSpeed) % yLimit;
+            (this.yTravel[index] + ySpeed + colSpeed + yGroupStep) % yLimit;
+
           // Row offset sits inside the wrap so rows loop with the rest of the swarm.
           const y =
             ((yStart * yLimit + layerY + rowY + this.yTravel[index] + yLimit) %
@@ -169,14 +177,15 @@ export default class Swarm {
     //   });
     // }
 
-    this.yRotTravel = this.yRotTravel + p.yRotSpeed * deltaFrame;
+    this.yRotTravel = this.yRotTravel + p.yRotSpeed;
     this.root.rotation.y =
-      (this.root.rotation.y + p.groupYRotSpeed * deltaFrame) % (Math.PI * 2);
+      (this.root.rotation.y + p.groupYRotSpeed) % (Math.PI * 2);
     this.updateInstances(
       p.ringRadius,
       p.yStartOffset,
       p.rowSpacing,
       p.ySpeed,
+      p.yGroupSpeed,
       deltaFrame,
       p.colSpeedAmp,
       p.colSpeedWaveLength,

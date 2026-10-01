@@ -1,6 +1,7 @@
 import { positionLocal, sin, cos, vec3 } from "three/tsl";
 
 export const swarmDisplace = ({
+  yGroupTravel,
   uniforms: {
     wiggleWaveLength,
     wiggleAmp,
@@ -13,6 +14,7 @@ export const swarmDisplace = ({
 }: {
   uniforms: Record<string, any>;
   ringAngle: any;
+  yGroupTravel: any;
 }) => {
   const radialDir = vec3(cos(ringAngle), 0, sin(ringAngle));
 
@@ -20,14 +22,17 @@ export const swarmDisplace = ({
     radialOffsetAmp,
   );
 
+  // Group travel is removed so the displacement rides along with it instead of scrolling through it.
+  const travelY = positionLocal.y.sub(yGroupTravel);
+
   const radialDisplace = radialDir
-    .mul(sin(positionLocal.y.mul(radialWaveLength).add(radialDisplaceOffset)))
+    .mul(sin(travelY.mul(radialWaveLength).add(radialDisplaceOffset)))
     .mul(radialAmp);
 
   const ringTangent = vec3(sin(ringAngle).negate(), 0, cos(ringAngle));
 
   const wiggleDisplace = ringTangent.mul(
-    sin(positionLocal.y.mul(wiggleWaveLength)).mul(wiggleAmp),
+    sin(travelY.mul(wiggleWaveLength)).mul(wiggleAmp),
   );
 
   return radialDisplace.add(wiggleDisplace);

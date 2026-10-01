@@ -110,6 +110,12 @@ export default {
       sliderMax: 1,
     },
     {
+      key: "yGroupSpeed",
+      defaultValue: 0,
+      sliderMin: -1,
+      sliderMax: 1,
+    },
+    {
       key: "colSpeedAmp",
       defaultValue: 1,
       sliderMin: 0,
