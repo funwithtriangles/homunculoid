@@ -82,6 +82,8 @@ export default class Swarm {
         this.swarmMat,
         INSTANCE_COUNT,
       );
+      // Bounds are cached from the first frame's instances and ignore shader displacement.
+      this.instancedMesh.frustumCulled = false;
 
       this.root.add(this.instancedMesh);
 
