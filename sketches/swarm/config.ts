@@ -1,5 +1,10 @@
 export const swarmUniformParams = [
   {
+    key: "isVisible",
+    defaultValue: true,
+    valueType: "boolean",
+  },
+  {
     key: "emissiveColor",
     valueType: "rgb",
     defaultValue: [0, 0, 0],

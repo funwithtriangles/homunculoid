@@ -155,6 +155,10 @@ export default class Swarm {
   }
 
   update({ params: p, deltaTime: f, deltaFrame }: UpdateParams) {
+    this.root.visible = p.isVisible;
+
+    if (!p.isVisible) return;
+
     updateUniforms(swarmUniformParams, this.uniforms, p);
 
     if (p.matcapFileName && p.matcapFileName !== this.lastMatCapUrl) {
