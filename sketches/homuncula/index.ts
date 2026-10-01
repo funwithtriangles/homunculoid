@@ -30,6 +30,8 @@ import {
   uniform,
   renderGroup,
   vec3,
+  mrt,
+  output,
 } from "three/tsl";
 import {
   homunculaUniformParams,
@@ -122,6 +124,11 @@ export default class Homuncula {
     this.energyBandMat.opacityNode = energyShape;
     this.energyBandMat.colorNode = vec3(energyShape).mul(this.energyColor);
     this.energyBandMat.positionNode = position;
+    // `output` keeps colour intact if the scene pass has no MRT (e.g. glow sketch not loaded).
+    this.energyBandMat.mrtNode = mrt({
+      output,
+      glowColor: output.mul(energyShape),
+    });
 
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = BasicShadowMap;
@@ -146,10 +153,18 @@ export default class Homuncula {
     );
 
     this.pipeMat.emissiveNode = sparkShape.mul(this.pipeSparkColor);
+    this.pipeMat.mrtNode = mrt({
+      output,
+      glowColor: output.mul(sparkShape),
+    });
 
     this.creatureMat.emissiveNode = shieldSparkShape
       .mul(this.pipeSparkColor)
       .mul(this.pipeSparkUniforms.creatureSparkAmp);
+    this.creatureMat.mrtNode = mrt({
+      output,
+      glowColor: output.mul(shieldSparkShape),
+    });
 
     gltfLoader.load(glbUrl, (gltf) => {
       this.model = gltf.scene;
