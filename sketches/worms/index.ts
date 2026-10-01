@@ -109,7 +109,7 @@ export default class Worms {
       const ringRad = this.uniforms.ringRad;
       const ringThickness = float(0.01);
       const glowSpread = this.uniforms.glowSpread;
-      const opacity = float(0.2);
+      const opacity = this.uniforms.opacity;
 
       const distanceToCenter = uv().sub(0.5).length();
 

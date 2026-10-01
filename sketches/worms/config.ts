@@ -3,6 +3,10 @@ export default {
   description: "Billboarded worms moving in 3D space",
   params: [
     {
+      key: "opacity",
+      defaultValue: 0,
+    },
+    {
       key: "swimSpeed",
       defaultValue: 0,
     },
