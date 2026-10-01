@@ -5,6 +5,11 @@ export const swarmUniformParams = [
     valueType: "boolean",
   },
   {
+    key: "color",
+    valueType: "rgb",
+    defaultValue: [0, 0, 0],
+  },
+  {
     key: "emissiveColor",
     valueType: "rgb",
     defaultValue: [0, 0, 0],
@@ -91,6 +96,12 @@ export default {
       defaultValue: 0,
       sliderMin: -0.2,
       sliderMax: 0.2,
+    },
+    {
+      key: "groupYPos",
+      defaultValue: 0,
+      sliderMin: -50,
+      sliderMax: 50,
     },
     {
       key: "ySpeed",

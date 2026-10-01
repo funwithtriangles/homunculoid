@@ -4,7 +4,6 @@ import {
   InstancedMesh,
   Mesh,
   MeshLambertNodeMaterial,
-  MeshMatcapNodeMaterial,
   Object3D,
   PerspectiveCamera,
   Scene,
@@ -30,7 +29,7 @@ const gltfLoader = new GLTFLoader();
 const textureLoader = new TextureLoader();
 
 const COL_COUNT = 80;
-const ROW_COUNT = 10;
+const ROW_COUNT = 5;
 const LAYER_COUNT = 5;
 const INSTANCE_COUNT = COL_COUNT * ROW_COUNT * LAYER_COUNT;
 
@@ -53,7 +52,7 @@ export default class Swarm {
   dummy = new Object3D();
   yTravel = new Float32Array(INSTANCE_COUNT);
   yRotTravel = 0;
-  swarmMat = new MeshMatcapNodeMaterial();
+  swarmMat = new MeshLambertNodeMaterial();
   uniforms = convertParamsToUniforms(swarmUniformParams);
   ringAngleAttribute = new InstancedBufferAttribute(
     new Float32Array(INSTANCE_COUNT),
@@ -94,6 +93,7 @@ export default class Swarm {
 
       this.swarmMat.positionNode = positionLocal.add(displace);
       this.swarmMat.emissiveNode = this.uniforms.emissiveColor;
+      this.swarmMat.colorNode = this.uniforms.color;
     });
   }
 
@@ -161,13 +161,13 @@ export default class Swarm {
 
     updateUniforms(swarmUniformParams, this.uniforms, p);
 
-    if (p.matcapFileName && p.matcapFileName !== this.lastMatCapUrl) {
-      this.lastMatCapUrl = p.matcapFileName;
-      textureLoader.load(p.matcapFileName, (matcap) => {
-        this.swarmMat.matcap = matcap;
-        this.swarmMat.needsUpdate = true;
-      });
-    }
+    // if (p.matcapFileName && p.matcapFileName !== this.lastMatCapUrl) {
+    //   this.lastMatCapUrl = p.matcapFileName;
+    //   textureLoader.load(p.matcapFileName, (matcap) => {
+    //     this.swarmMat.matcap = matcap;
+    //     this.swarmMat.needsUpdate = true;
+    //   });
+    // }
 
     this.yRotTravel = this.yRotTravel + p.yRotSpeed * deltaFrame;
     this.root.rotation.y =
@@ -198,7 +198,10 @@ export default class Swarm {
         this.scene.getObjectByName(p.trackedObjectName) ?? null;
     }
 
-    if (!this.trackedObject) return;
+    if (!this.trackedObject) {
+      this.root.position.set(0, p.groupYPos, 0);
+      return;
+    }
 
     this.trackedObject.getWorldPosition(this.targetTrackedPosition);
 
@@ -212,6 +215,7 @@ export default class Swarm {
     }
 
     this.root.position.copy(this.trackedPosition);
+    this.root.position.y += p.groupYPos;
 
     this.isFirstFrame = false;
   }

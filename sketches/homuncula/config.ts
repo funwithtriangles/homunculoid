@@ -302,6 +302,12 @@ export default {
           valueType: "rgb",
           defaultValue: [1, 1, 1],
         },
+        {
+          key: "dirLightIntensity",
+          defaultValue: 1,
+          sliderMin: 0,
+          sliderMax: 5,
+        },
       ],
     },
     {

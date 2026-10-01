@@ -7,6 +7,7 @@ import {
   FogExp2,
   Color,
   PointLight,
+  DirectionalLight,
   BasicShadowMap,
   DoubleSide,
   MeshBasicNodeMaterial,
@@ -89,6 +90,7 @@ export default class Homuncula {
   energyBandMat = new MeshBasicNodeMaterial();
   creatureWorldPos = uniform(new Vector3());
   pLight = new PointLight(0xffffff, 1);
+  dirLight = new DirectionalLight(0xffffff, 1);
   creatureAnchor = new Group();
   isCreatureVisible = false;
   partnersVisible = new Array(PARTNER_COUNT).fill(false) as boolean[];
@@ -113,6 +115,9 @@ export default class Homuncula {
     this.camera = camera;
 
     this.root.add(this.pLight);
+    // Light points from its position to its target, so straight above means straight down.
+    this.dirLight.position.set(0.2, 1, 0);
+    this.root.add(this.dirLight, this.dirLight.target);
     this.creatureAnchor.visible = this.isCreatureVisible;
 
     const { energyShape, position } = armBandEnergyShape(
@@ -326,6 +331,8 @@ export default class Homuncula {
     this.pLight.position.z = this.camera.position.z - 3;
 
     this.pLight.shadow.needsUpdate = true;
+
+    this.dirLight.intensity = params.dirLightIntensity;
 
     this.creature?.update({ params, deltaTime });
     // Kept ticking while hidden so their path phase stays locked to the main one.
