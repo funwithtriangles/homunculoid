@@ -27,8 +27,6 @@ import { swarmDisplace } from "./swarmDisplace";
 
 const gltfLoader = new GLTFLoader();
 
-const textureLoader = new TextureLoader();
-
 const COL_COUNT = 80;
 const ROW_COUNT = 10;
 const LAYER_COUNT = 5;
