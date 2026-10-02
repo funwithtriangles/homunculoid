@@ -3,8 +3,10 @@ import { WebGPURenderer } from "three/webgpu";
 import {
   convertToTexture,
   mix,
+  mx_noise_float,
   screenUV,
   step,
+  smoothstep,
   texture,
   uniform,
   vec2,
@@ -13,12 +15,14 @@ import {
 import { Shoutout } from "./shoutout";
 
 const canvasAspectRatio = 1920 / 1080;
+const revealFeather = 0.06;
 
 export default class ShoutoutSketch {
   shoutout = new Shoutout();
   shoutoutTexture = texture(this.shoutout.texture);
   fitScaleX = uniform(1);
   fitScaleY = uniform(1);
+  reveal = uniform(1);
 
   getWebGPUPass(prevPass: Node): Node {
     const fitUV = screenUV
@@ -31,12 +35,29 @@ export default class ShoutoutSketch {
       .mul(step(fitUV.y, 1));
     const shoutout = this.shoutoutTexture.sample(fitUV);
     const base = convertToTexture(prevPass).sample(screenUV);
-    const textAlpha = shoutout.a.mul(insideCanvas);
+    const noise = mx_noise_float(fitUV.mul(8)).remap(
+      -1,
+      1,
+      revealFeather,
+      1 - revealFeather,
+    );
+    const revealMask = smoothstep(
+      noise.sub(revealFeather),
+      noise.add(revealFeather),
+      this.reveal,
+    );
+    const textAlpha = shoutout.a.mul(insideCanvas).mul(revealMask);
 
     return vec4(mix(base.rgb, shoutout.rgb, textAlpha), base.a);
   }
 
-  update({ params, scene }: { params: any; scene: { renderer: WebGPURenderer } }) {
+  update({
+    params,
+    scene,
+  }: {
+    params: any;
+    scene: { renderer: WebGPURenderer };
+  }) {
     const { width, height } = scene.renderer.domElement;
     if (width > 0 && height > 0) {
       const screenAspectRatio = width / height;
@@ -44,6 +65,7 @@ export default class ShoutoutSketch {
       this.fitScaleY.value = Math.min(1, screenAspectRatio / canvasAspectRatio);
     }
 
+    this.reveal.value = params.reveal;
     this.shoutout.update({ params });
   }
 

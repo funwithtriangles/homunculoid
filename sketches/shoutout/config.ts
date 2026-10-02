@@ -73,6 +73,13 @@ export const shoutoutParams = [
     sliderMin: 0,
     sliderMax: 1,
   },
+  {
+    key: "reveal",
+    title: "Reveal",
+    defaultValue: 1,
+    sliderMin: 0,
+    sliderMax: 1,
+  },
 ];
 
 export default {
