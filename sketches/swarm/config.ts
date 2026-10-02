@@ -149,4 +149,9 @@ export default {
     },
     ...swarmUniformParams,
   ],
+  shots: [
+    {
+      key: "resetSwarm",
+    },
+  ],
 };

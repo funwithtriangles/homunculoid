@@ -30,7 +30,7 @@ const gltfLoader = new GLTFLoader();
 const textureLoader = new TextureLoader();
 
 const COL_COUNT = 80;
-const ROW_COUNT = 5;
+const ROW_COUNT = 10;
 const LAYER_COUNT = 5;
 const INSTANCE_COUNT = COL_COUNT * ROW_COUNT * LAYER_COUNT;
 
@@ -233,6 +233,11 @@ export default class Swarm {
 
   dispose() {
     this.resetTrackedObject();
+  }
+
+  resetSwarm() {
+    this.yGroupTravel.value = 0;
+    this.yTravel.fill(0);
   }
 
   resetTrackedObject() {
