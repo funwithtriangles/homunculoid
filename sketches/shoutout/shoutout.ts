@@ -1,5 +1,4 @@
 import { CanvasTexture } from "three";
-import "@fontsource-variable/roboto-condensed";
 
 type ShoutoutParams = {
   color: [number, number, number];

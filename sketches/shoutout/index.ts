@@ -1,3 +1,4 @@
+import fontUrl from "@fontsource-variable/roboto-condensed/files/roboto-condensed-latin-wght-normal.woff2?url";
 import { Node } from "three/webgpu";
 import { WebGPURenderer } from "three/webgpu";
 import {
@@ -8,14 +9,16 @@ import {
   step,
   smoothstep,
   texture,
+  time,
   uniform,
   vec2,
   vec4,
+  vec3,
 } from "three/tsl";
 import { Shoutout } from "./shoutout";
+import { ensureFontInjected } from "./fontUtils";
 
 const canvasAspectRatio = 1920 / 1080;
-const revealFeather = 0.06;
 
 export default class ShoutoutSketch {
   shoutout = new Shoutout();
@@ -23,6 +26,21 @@ export default class ShoutoutSketch {
   fitScaleX = uniform(1);
   fitScaleY = uniform(1);
   reveal = uniform(1);
+  revealFeather = uniform(0.06);
+  noiseScale = uniform(8);
+  noiseSpeed = uniform(0);
+  warpNoiseScale = uniform(8);
+  warpNoiseSpeed = uniform(0.2);
+  warpAmp = uniform(0.01);
+
+  constructor() {
+    ensureFontInjected({
+      fontFamily: "Roboto Condensed Variable",
+      fontUrl: fontUrl,
+      fontWeight: "100 900",
+      format: "woff2-variations",
+    });
+  }
 
   getWebGPUPass(prevPass: Node): Node {
     const fitUV = screenUV
@@ -33,17 +51,22 @@ export default class ShoutoutSketch {
       .mul(step(fitUV.x, 1))
       .mul(step(0, fitUV.y))
       .mul(step(fitUV.y, 1));
-    const shoutout = this.shoutoutTexture.sample(fitUV);
-    const base = convertToTexture(prevPass).sample(screenUV);
-    const noise = mx_noise_float(fitUV.mul(8)).remap(
-      -1,
-      1,
-      revealFeather,
-      1 - revealFeather,
+    const warpCoords = vec3(
+      fitUV.mul(this.warpNoiseScale),
+      time.mul(this.warpNoiseSpeed),
     );
+    const warpX = mx_noise_float(warpCoords);
+    const warpY = mx_noise_float(warpCoords.add(vec3(13.7, 31.4, 8.1)));
+    const warpedUV = fitUV.add(vec2(warpX, warpY).mul(this.warpAmp));
+    const shoutout = this.shoutoutTexture.sample(warpedUV);
+    const base = convertToTexture(prevPass).sample(screenUV);
+    const feather = this.revealFeather.max(0.0001);
+    const noise = mx_noise_float(
+      vec3(fitUV.mul(this.noiseScale), time.mul(this.noiseSpeed)),
+    ).remap(-1, 1, feather, feather.oneMinus());
     const revealMask = smoothstep(
-      noise.sub(revealFeather),
-      noise.add(revealFeather),
+      noise.sub(feather),
+      noise.add(feather),
       this.reveal,
     );
     const textAlpha = shoutout.a.mul(insideCanvas).mul(revealMask);
@@ -66,6 +89,12 @@ export default class ShoutoutSketch {
     }
 
     this.reveal.value = params.reveal;
+    this.revealFeather.value = params.revealFeather;
+    this.noiseScale.value = params.noiseScale;
+    this.noiseSpeed.value = params.noiseSpeed;
+    this.warpNoiseScale.value = params.warpNoiseScale;
+    this.warpNoiseSpeed.value = params.warpNoiseSpeed;
+    this.warpAmp.value = params.warpAmp;
     this.shoutout.update({ params });
   }
 

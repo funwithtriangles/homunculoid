@@ -80,6 +80,51 @@ export const shoutoutParams = [
     sliderMin: 0,
     sliderMax: 1,
   },
+  {
+    key: "revealFeather",
+    title: "Reveal Feather",
+    defaultValue: 0.06,
+    sliderMin: 0,
+    sliderMax: 0.25,
+    step: 0.001,
+  },
+  {
+    key: "noiseSpeed",
+    title: "Noise Speed",
+    defaultValue: 0,
+    sliderMin: 0,
+    sliderMax: 2,
+  },
+  {
+    key: "noiseScale",
+    title: "Noise Scale",
+    defaultValue: 8,
+    sliderMin: 1,
+    sliderMax: 24,
+  },
+  {
+    key: "warpNoiseSpeed",
+    title: "Warp Noise Speed",
+    defaultValue: 0.2,
+    sliderMin: 0,
+    sliderMax: 2,
+    step: 0.01,
+  },
+  {
+    key: "warpNoiseScale",
+    title: "Warp Noise Scale",
+    defaultValue: 8,
+    sliderMin: 1,
+    sliderMax: 24,
+  },
+  {
+    key: "warpAmp",
+    title: "Warp Amplitude",
+    defaultValue: 0.01,
+    sliderMin: 0,
+    sliderMax: 0.05,
+    step: 0.001,
+  },
 ];
 
 export default {
