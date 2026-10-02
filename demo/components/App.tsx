@@ -1,7 +1,6 @@
 import { StrictMode, useState, useCallback, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import MainCard from "./MainCard";
-import Controls from "./Controls";
 import type { HedronEngine } from "@hedron-gl/engine";
 import type { Clock } from "@hedron-gl/clock";
 import { EngineProvider } from "@hedron-gl/ui-core";
@@ -57,6 +56,10 @@ function App() {
     }
   }, [isLoaded]);
 
+  useEffect(() => {
+    document.body.style.cursor = isPlaying ? "none" : "auto";
+  }, [isPlaying]);
+
   const handleBodyClick = useCallback(() => {
     if (controlsOpen) {
       setControlsOpen(false);
@@ -85,9 +88,9 @@ function App() {
           buttonText={buttonText}
           onPlayClick={handlePlayClick}
         />
-        {isPlaying && (
+        {/* {isPlaying && (
           <Controls isOpen={controlsOpen} onToggle={handleToggleControls} />
-        )}
+        )} */}
       </div>
     </EngineProvider>
   );
