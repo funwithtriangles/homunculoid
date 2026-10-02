@@ -33,6 +33,7 @@ import {
   vec3,
   mrt,
   output,
+  vec4,
 } from "three/tsl";
 import {
   homunculaUniformParams,
@@ -60,6 +61,8 @@ export default class Homuncula {
   partners: Creature[] = [];
   pipeMat = new MeshStandardNodeMaterial();
   creatureMat = new MeshStandardNodeMaterial();
+  eyesMat = new MeshStandardNodeMaterial();
+  eyesEmissiveColor = uniform(new Color(0x000000));
   bgColor = new Color(0, 0, 1);
   // Render group so the value is uploaded once per render, not per render object.
   envRampLow = uniform(new Color(0x000000)).setGroup(renderGroup);
@@ -178,6 +181,19 @@ export default class Homuncula {
     gltfLoader.load(glbUrl, (gltf) => {
       this.model = gltf.scene;
 
+      const eyesMesh = this.model.getObjectByName("eyes");
+      if (eyesMesh && isMesh(eyesMesh) && !Array.isArray(eyesMesh.material)) {
+        this.eyesMat.copy(
+          eyesMesh.material as unknown as MeshStandardNodeMaterial,
+        );
+        this.eyesMat.emissiveNode = this.eyesEmissiveColor;
+        this.eyesMat.mrtNode = mrt({
+          output,
+          glowColor: vec4(this.eyesEmissiveColor, 1),
+        });
+        eyesMesh.material = this.eyesMat;
+      }
+
       const modules = this.model.getObjectByName("modules");
 
       let hasCopiedPipeMat = false;
@@ -294,6 +310,7 @@ export default class Homuncula {
     this.envRampLow.value.set(...params.envRampLow);
     this.envRampHigh.value.set(...params.envRampHigh);
     this.envIntensity.value = params.envIntensity;
+    this.eyesEmissiveColor.value.set(...params.eyesEmissiveColor);
 
     this.pipeSparkColor.value.set(...params.pipeSparkColor);
     updateUniforms(pipeSparkUniformParams, this.pipeSparkUniforms, params);
@@ -414,6 +431,7 @@ export default class Homuncula {
     this.creature?.dispose();
     this.partners.forEach((partner) => partner.dispose());
     this.creatureMat?.dispose();
+    this.eyesMat.dispose();
     this.energyBandMat.dispose();
   }
 }

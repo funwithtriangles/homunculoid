@@ -1,12 +1,14 @@
 import { BlendMode, MaterialBlending, Node, PassNode } from "three/webgpu";
-import { mrt, output, vec4 } from "three/tsl";
+import { max, mrt, output, rotateUV, screenUV, vec2, vec4 } from "three/tsl";
 import { gaussianBlur } from "./gaussianBlur";
 import { convertParamsToUniforms, updateUniforms } from "../../uniformsUtils";
 import { glowParams } from "./config";
+import { pingPong } from "./pingPongNode";
 
 export default class Glow {
   uniforms = convertParamsToUniforms(glowParams);
   renderPassNode: PassNode | null = null;
+  trailPass: ReturnType<typeof pingPong> | null = null;
 
   getWebGPUPass(prevPass: Node, renderPassNode: PassNode): Node {
     this.renderPassNode = renderPassNode;
@@ -26,10 +28,39 @@ export default class Glow {
       4,
       { resolutionScale: 0.5 },
     );
-    return prevPass.add(glow.mul(this.uniforms.glowStrength));
+    this.trailPass?.dispose();
+    this.trailPass = pingPong(glow, (textureNew, textureOld) => {
+      const direction = vec2(
+        this.uniforms.trailDirectionX,
+        this.uniforms.trailDirectionY,
+      ).mul(this.uniforms.trailSpeed);
+      const oldUV = rotateUV(screenUV, this.uniforms.trailRotation)
+        .sub(vec2(0.5))
+        .div(this.uniforms.trailScale.add(1))
+        .add(vec2(0.5))
+        .add(direction);
+      const currentGlow = textureNew.sample(screenUV);
+      const previousGlow = textureOld.sample(oldUV);
+      const accumulatedGlow = currentGlow.add(
+        previousGlow.mul(this.uniforms.trailMixAmp),
+      );
+      return vec4(
+        accumulatedGlow.rgb,
+        max(currentGlow.a, previousGlow.a.mul(this.uniforms.trailMixAmp)),
+      );
+    });
+
+    return prevPass.add(
+      this.trailPass
+        .getTextureNode()
+        .mul(this.uniforms.glowStrength)
+        .mul(this.uniforms.trailIntensity),
+    );
   }
 
   dispose() {
+    this.trailPass?.dispose();
+    this.trailPass = null;
     this.renderPassNode?.setMRT(null);
   }
 

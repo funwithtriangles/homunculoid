@@ -311,6 +311,17 @@ export default {
       ],
     },
     {
+      groupTitle: "Eyes",
+      params: [
+        {
+          key: "eyesEmissiveColor",
+          title: "Emissive Color",
+          valueType: "rgb",
+          defaultValue: [0, 0, 0],
+        },
+      ],
+    },
+    {
       groupTitle: "Pipe Sparks",
       params: [
         {
