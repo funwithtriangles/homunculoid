@@ -100,6 +100,7 @@ export default class Homuncula {
   scene: Scene;
   camera: PerspectiveCamera;
   skeletonHelper: SkeletonHelper | null = null;
+  isSceneCompiled = false;
 
   constructor({
     scene,
@@ -114,6 +115,8 @@ export default class Homuncula {
     scene.background = this.bgColor;
     scene.fog = new FogExp2(scene.background, 0.1);
     scene.fog.color = this.bgColor;
+
+    camera.position.set(0, 0, 0);
 
     this.camera = camera;
 
@@ -277,6 +280,7 @@ export default class Homuncula {
         renderer.compile(scene, camera);
 
         appSetters.setModelLoaded(true);
+        this.isSceneCompiled = true;
       }, 1000);
     });
 
@@ -326,7 +330,10 @@ export default class Homuncula {
     this.updateArmBandDeltas(params, deltaTime);
     this.energyColor.value.set(...params.pipeSparkColor);
 
-    if (params.isCreatureVisible !== this.isCreatureVisible) {
+    if (
+      params.isCreatureVisible !== this.isCreatureVisible &&
+      this.isSceneCompiled
+    ) {
       this.isCreatureVisible = params.isCreatureVisible;
       this.creatureAnchor.visible = this.isCreatureVisible;
       this.moduleGrid?.setCreature(
