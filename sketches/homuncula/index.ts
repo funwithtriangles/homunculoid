@@ -256,9 +256,12 @@ export default class Homuncula {
       this.skeletonHelper = this.creature.skeletonHelper;
       if (this.skeletonHelper) this.scene.add(this.skeletonHelper);
 
-      appSetters.setModelLoaded(true);
+      setTimeout(() => {
+        // NOTE: Make sure everything on first keyframe is visible that you want pre-compiled to prevent lag
+        renderer.compile(scene, camera);
 
-      renderer.compile(scene, camera);
+        appSetters.setModelLoaded(true);
+      }, 1000);
     });
 
     rgbeLoader.load(hdrUrl, (texture) => {
