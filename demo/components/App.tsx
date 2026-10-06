@@ -68,7 +68,12 @@ function App() {
     }
   }, [controlsOpen, isPlaying]);
 
-  const handlePlayClick = useCallback(() => {
+  const handlePlayClick = useCallback(async () => {
+    const requestFullscreen =
+      document.body.requestFullscreen || document.body.webkitRequestFullscreen;
+    if (requestFullscreen) {
+      await requestFullscreen.call(document.body);
+    }
     appCallbacks.onPlay();
   }, []);
 
