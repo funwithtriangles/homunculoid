@@ -4,6 +4,7 @@ import MainCard from "./MainCard";
 import type { HedronEngine } from "@hedron-gl/engine";
 import type { Clock } from "@hedron-gl/clock";
 import { EngineProvider } from "@hedron-gl/ui-core";
+import Controls from "./Controls";
 
 // Callbacks that main.ts will set
 export const appCallbacks = {
@@ -56,9 +57,9 @@ function App() {
     }
   }, [isLoaded]);
 
-  useEffect(() => {
-    document.body.style.cursor = isPlaying ? "none" : "auto";
-  }, [isPlaying]);
+  // useEffect(() => {
+  //   document.body.style.cursor = isPlaying ? "none" : "auto";
+  // }, [isPlaying]);
 
   const handleBodyClick = useCallback(() => {
     if (controlsOpen) {
@@ -93,9 +94,9 @@ function App() {
           buttonText={buttonText}
           onPlayClick={handlePlayClick}
         />
-        {/* {isPlaying && (
+        {isPlaying && (
           <Controls isOpen={controlsOpen} onToggle={handleToggleControls} />
-        )} */}
+        )}
       </div>
     </EngineProvider>
   );
