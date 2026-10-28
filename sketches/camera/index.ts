@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { positioningParams } from "./config";
 
 interface SketchConstructorArg {
   camera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
@@ -25,10 +26,12 @@ const easeOutSine = (x: number): number => {
 
 export default class Camera {
   root: THREE.Group;
-  lookAtPos: THREE.Vector3;
+  lookAtPosA = new THREE.Vector3();
+  lookAtPosB = new THREE.Vector3();
   yPos = 0;
   orbitRad = 0;
-  targetLookAtPos = new THREE.Vector3();
+  targetLookAtPosA = new THREE.Vector3();
+  targetLookAtPosB = new THREE.Vector3();
   orbitDelta = 0;
   latchDelta = 0;
   lerpDelta = 0;
@@ -38,13 +41,33 @@ export default class Camera {
   trackedObject: THREE.Object3D | null = null;
   currentMode: "fly" | "tracksObject" = "fly";
   currentType: "perspective" | "orthographic" = "perspective";
+  currentCameraSelect = "cameraA";
   isFirstFrame = true;
   perspectiveCamera = new THREE.PerspectiveCamera();
   orthographicCamera = new THREE.OrthographicCamera();
   sketchApi: SketchConstructorArg;
-  trackedPosition = new THREE.Vector3();
+  trackedPositionA = new THREE.Vector3();
+  trackedPositionB = new THREE.Vector3();
   targetTrackedPosition = new THREE.Vector3();
   trackedCameraPosition = new THREE.Vector3();
+
+  get trackedPosition() {
+    return this.currentCameraSelect === "cameraB"
+      ? this.trackedPositionB
+      : this.trackedPositionA;
+  }
+
+  get lookAtPos() {
+    return this.currentCameraSelect === "cameraB"
+      ? this.lookAtPosB
+      : this.lookAtPosA;
+  }
+
+  get targetLookAtPos() {
+    return this.currentCameraSelect === "cameraB"
+      ? this.targetLookAtPosB
+      : this.targetLookAtPosA;
+  }
 
   constructor(sketchApi: SketchConstructorArg) {
     this.root = new THREE.Group();
@@ -56,12 +79,21 @@ export default class Camera {
 
     this.sketchApi.camera = camera;
 
-    this.lookAtPos = new THREE.Vector3();
-
     // this.sketchApi.camera.near = 0.0001;
   }
 
-  update({ params: p, deltaTime: f }: UpdateParams) {
+  update({ params, deltaTime: f }: UpdateParams) {
+    const cameraSelect = params.cameraSelect ?? "cameraA";
+    const cameraBParams = {
+      ...params,
+      ...Object.fromEntries(
+        positioningParams.map(({ key, defaultValue }) => [
+          key,
+          params[`${key}_cameraB`] ?? defaultValue,
+        ]),
+      ),
+    };
+    const p = cameraSelect === "cameraB" ? cameraBParams : params;
     const lerpVal = (1 - Math.exp(-1 * f)) * p.lerpSpeed;
 
     // Check if the tracked object has changed and update the reference accordingly.
@@ -73,6 +105,9 @@ export default class Camera {
         this.resetTrackedObject();
       }
     }
+
+    const snap = this.isFirstFrame || cameraSelect !== this.currentCameraSelect;
+    this.currentCameraSelect = cameraSelect;
 
     if (this.currentType !== p.cameraType) {
       if (p.cameraType === "perspective") {
@@ -91,7 +126,7 @@ export default class Camera {
       this.sketchApi.camera.zoom = p.orthographicZoom;
     }
 
-    if (this.isFirstFrame) {
+    if (snap) {
       this.orbitDelta = p.orbitRot;
       this.latchDelta = this.orbitDelta;
       this.lerpDelta = 1;
@@ -111,7 +146,7 @@ export default class Camera {
         : null;
     }
 
-    if (p.isRotating && !this.isFirstFrame) {
+    if (p.isRotating && !snap) {
       this.orbitDelta = (this.orbitDelta + f * p.rotSpeed) % TAU;
       this.lerpDelta = 0;
       this.latchDelta = this.orbitDelta;
@@ -143,11 +178,7 @@ export default class Camera {
       const pathZ = this.flyDelta;
       const pathX = Math.sin(pathZ * p.waveFreq) * p.waveAmp;
 
-      const aheadZ = pathZ - p.lookAhead;
-      const aheadX = Math.sin(aheadZ * p.waveFreq) * p.waveAmp;
-
       this.targetTrackedPosition.set(pathX, 0, pathZ);
-      this.targetLookAtPos.set(aheadX, p.lookAtPosY, aheadZ);
 
       // Bank into the turn using the slope of the wave.
       const slope = Math.cos(pathZ * p.waveFreq) * p.waveAmp;
@@ -155,19 +186,50 @@ export default class Camera {
     } else if (this.trackedObject) {
       this.targetZRot = 0;
       this.trackedObject.getWorldPosition(this.targetTrackedPosition);
-
-      this.targetLookAtPos
-        .copy(this.targetTrackedPosition)
-        .add(new THREE.Vector3(0, p.lookAtPosY, 0));
     }
 
-    if (this.isFirstFrame) {
+    for (const [position, lookAt, targetLookAt, trackingParams] of [
+      [this.trackedPositionA, this.lookAtPosA, this.targetLookAtPosA, params],
+      [this.trackedPositionB, this.lookAtPosB, this.targetLookAtPosB, cameraBParams],
+    ] as const) {
+      const target =
+        this.currentMode === "fly"
+          ? new THREE.Vector3(
+              Math.sin(this.flyDelta * trackingParams.waveFreq) *
+                trackingParams.waveAmp,
+              0,
+              this.flyDelta,
+            )
+          : this.targetTrackedPosition;
+
+      if (this.currentMode === "fly") {
+        const aheadZ = this.flyDelta - trackingParams.lookAhead;
+        targetLookAt.set(
+          Math.sin(aheadZ * trackingParams.waveFreq) * trackingParams.waveAmp,
+          trackingParams.lookAtPosY,
+          aheadZ,
+        );
+      } else if (this.trackedObject) {
+        targetLookAt.copy(this.targetTrackedPosition);
+        targetLookAt.y += trackingParams.lookAtPosY;
+      }
+
+      if (this.isFirstFrame) {
+        position.copy(target);
+        lookAt.copy(targetLookAt);
+      } else {
+        const trackingLerpVal =
+          (1 - Math.exp(-1 * f)) * trackingParams.lerpSpeed;
+        position.lerp(target, trackingLerpVal);
+        lookAt.lerp(targetLookAt, trackingLerpVal);
+      }
+    }
+
+    if (snap) {
       this.orbitRad = p.orbitRad;
-      this.trackedPosition.copy(this.targetTrackedPosition);
+      this.yPos = p.camY;
     } else {
       this.orbitRad = lerp(this.orbitRad, p.orbitRad, lerpVal);
-
-      this.trackedPosition.lerp(this.targetTrackedPosition, lerpVal);
     }
 
     const circX = Math.sin(this.orbitDelta) * this.orbitRad * p.bigOrbitRad;
@@ -179,17 +241,13 @@ export default class Camera {
     );
     this.sketchApi.camera.position.copy(this.trackedCameraPosition);
 
-    if (this.isFirstFrame) {
-      this.lookAtPos.copy(this.targetLookAtPos);
-      this.yPos = p.camY;
-    } else {
-      this.lookAtPos.lerp(this.targetLookAtPos, lerpVal);
+    if (!snap) {
       this.yPos = lerp(this.yPos, p.camY, lerpVal);
     }
 
     this.sketchApi.camera.lookAt(this.lookAtPos);
 
-    if (this.isFirstFrame) {
+    if (snap) {
       this.zRot = this.targetZRot;
     } else {
       this.zRot = lerp(this.zRot, this.targetZRot, lerpVal);

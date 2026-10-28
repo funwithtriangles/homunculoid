@@ -1,85 +1,94 @@
+export const positioningParams = [
+  {
+    key: "rotSpeed",
+    defaultValue: 0,
+    sliderMax: 0.2,
+  },
+  {
+    key: "lookAtPosY",
+    defaultValue: 0,
+    sliderMax: 10,
+  },
+  {
+    key: "camY",
+    defaultValue: 0,
+    sliderMin: -10,
+    sliderMax: 10,
+  },
+  {
+    key: "orbitRot",
+    defaultValue: 0,
+    sliderMax: Math.PI * 2,
+    sliderMin: 0,
+  },
+  {
+    key: "orbitRad",
+    defaultValue: 1,
+    sliderMax: 20,
+  },
+  {
+    key: "bigOrbitRad",
+    defaultValue: 1,
+    sliderMin: 1,
+    sliderMax: 100,
+  },
+  {
+    key: "flySpeed",
+    defaultValue: 0,
+    sliderMin: -1,
+    sliderMax: 1,
+  },
+  {
+    key: "waveFreq",
+    defaultValue: 0.02,
+    sliderMin: 0,
+    sliderMax: 0.2,
+  },
+  {
+    key: "waveAmp",
+    defaultValue: 0,
+    sliderMin: 0,
+    sliderMax: 50,
+  },
+  {
+    key: "tiltStrength",
+    defaultValue: 0,
+    sliderMin: -3,
+    sliderMax: 3,
+  },
+  {
+    key: "lookAhead",
+    defaultValue: 0,
+    sliderMin: 0,
+    sliderMax: 20,
+  },
+  {
+    key: "isRotating",
+    title: "Auto Rotate",
+    valueType: "boolean",
+    defaultValue: false,
+  },
+  {
+    key: "lerpSpeed",
+    title: "Lerp Speed",
+    valueType: "number",
+    defaultValue: 0.1,
+  },
+];
+
 export default {
   defaultTitle: "Camera",
   params: [
     {
-      groupTitle: "Positioning",
-      params: [
-        {
-          key: "rotSpeed",
-          defaultValue: 0,
-          sliderMax: 0.2,
-        },
-        {
-          key: "lookAtPosY",
-          defaultValue: 0,
-          sliderMax: 10,
-        },
-        {
-          key: "camY",
-          defaultValue: 0,
-          sliderMin: -10,
-          sliderMax: 10,
-        },
-        {
-          key: "orbitRot",
-          defaultValue: 0,
-          sliderMax: Math.PI * 2,
-          sliderMin: 0,
-        },
-        {
-          key: "orbitRad",
-          defaultValue: 1,
-          sliderMax: 20,
-        },
-        {
-          key: "bigOrbitRad",
-          defaultValue: 1,
-          sliderMin: 1,
-          sliderMax: 100,
-        },
-        {
-          key: "flySpeed",
-          defaultValue: 0,
-          sliderMin: -1,
-          sliderMax: 1,
-        },
-        {
-          key: "waveFreq",
-          defaultValue: 0.02,
-          sliderMin: 0,
-          sliderMax: 0.2,
-        },
-        {
-          key: "waveAmp",
-          defaultValue: 0,
-          sliderMin: 0,
-          sliderMax: 50,
-        },
-        {
-          key: "tiltStrength",
-          defaultValue: 0,
-          sliderMin: -3,
-          sliderMax: 3,
-        },
-        {
-          key: "lookAhead",
-          defaultValue: 0,
-          sliderMin: 0,
-          sliderMax: 20,
-        },
-        {
-          key: "isRotating",
-          title: "Auto Rotate",
-          valueType: "boolean",
-          defaultValue: false,
-        },
-        {
-          key: "lerpSpeed",
-          title: "Lerp Speed",
-          valueType: "number",
-          defaultValue: 0.1,
-        },
-      ],
+      groupTitle: "Positioning Cam A",
+      params: positioningParams,
+    },
+    {
+      groupTitle: "Positioning Cam B",
+      params: positioningParams.map((param) => ({
+        ...param,
+        key: `${param.key}_cameraB`,
+      })),
     },
     {
       groupTitle: "Perspective",
@@ -118,6 +127,22 @@ export default {
     {
       groupTitle: "Modes",
       params: [
+        {
+          key: "cameraSelect",
+          title: "Camera Select",
+          valueType: "enum",
+          defaultValue: "cameraA",
+          options: [
+            {
+              label: "Camera A",
+              value: "cameraA",
+            },
+            {
+              label: "Camera B",
+              value: "cameraB",
+            },
+          ],
+        },
         {
           key: "mode",
           title: "Camera Mode",
